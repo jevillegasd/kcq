@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  kcq waveguide/CPW parameter definitions for the kcq technology.
+
+  Schema (v1):
+    <waveguides version="1">
+      <technology name="..." units="um">
+        <cpw name="..." layer="LAYER/DATATYPE" gap_layer="LAYER/DATATYPE">
+          <trace_width value="..."/>
+          <gap_width value="..."/>
+          <ground_clearance value="..."/>
+          <bend_radius min="..." default="..." style="euler|arc"/>
+          <taper length="..."/>
+          <routing style="octilinear|manhattan"/>
+        </cpw>
+        ...
+      </technology>
+    </waveguides>
+
+  layer/gap_layer are "layernum/datatype" pairs, parsed by
+  kcq.geometry.cpw.parse_layer_spec; must be distinct (trace metal vs.
+  gap-keepout marker that kcq.geometry.ground subtracts). kcq's
+  default technology follows a negative-lithography convention for the
+  shared base metal: 1/0 is the gap/keepout envelope, 1/1 is the
+  positive trace core, and every cpw type shares that one pair (no
+  separate layer per waveguide "flavor"; flux_line differs in width/gap/
+  bend params, not in which layer it lives on).
+
+  All values here are read via kcq.utils.xml_parser.get_cpw_params(),
+  never hardcoded in Python.
+-->
+<waveguides version="1">
+  <technology name="kcq" units="um">
+    <cpw name="feedline" layer="1/1" gap_layer="1/0">
+      <trace_width value="10.0"/>
+      <gap_width value="6.0"/>
+      <ground_clearance value="20.0"/>
+      <bend_radius min="50.0" default="100.0" style="euler"/>
+      <taper length="150.0"/>
+      <routing style="octilinear"/>
+    </cpw>
+    <cpw name="resonator" layer="1/1" gap_layer="1/0">
+      <trace_width value="10.0"/>
+      <gap_width value="6.0"/>
+      <ground_clearance value="20.0"/>
+      <bend_radius min="50.0" default="80.0" style="euler"/>
+      <taper length="100.0"/>
+      <routing style="octilinear"/>
+    </cpw>
+    <cpw name="flux_line" layer="1/1" gap_layer="1/0">
+      <trace_width value="3.0"/>
+      <gap_width value="2.0"/>
+      <ground_clearance value="10.0"/>
+      <bend_radius min="15.0" default="25.0" style="arc"/>
+      <taper length="50.0"/>
+      <routing style="manhattan"/>
+    </cpw>
+    <launcher_pitch>
+      <pitch value="1000.0"/>
+      <pitch value="2540.0"/>
+    </launcher_pitch>
+  </technology>
+</waveguides>

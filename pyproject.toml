@@ -1,0 +1,15 @@
+[project]
+name = "kcq-dev"
+version = "0.1.0"
+description = "Development tooling environment for the kcq KLayout Salt package."
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "klayout>=0.29",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

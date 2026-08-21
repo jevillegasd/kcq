@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>kcq User Manual</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #1c1e26;
+    --muted: #5b6270;
+    --accent: #1d5fbf;
+    --border: #e2e5ea;
+    --code-bg: #f4f6f9;
+    --note-bg: #eef5ff;
+    --planned-bg: #fff7e6;
+    --planned-border: #e8b339;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+  }
+  .page {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 5rem;
+  }
+  h1, h2, h3 { line-height: 1.25; }
+  h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+  h2 {
+    font-size: 1.4rem;
+    margin-top: 3rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+  p, li { color: var(--text); }
+  .subtitle { color: var(--muted); font-size: 1.05rem; margin-top: 0; }
+  code {
+    font-family: "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    font-size: 0.92em;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+  }
+  pre code { background: none; padding: 0; font-size: 0.87rem; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0 1.5rem; }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.7rem;
+    text-align: left;
+    font-size: 0.92rem;
+    vertical-align: top;
+  }
+  th { background: var(--code-bg); }
+  .toc {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .toc ol { margin: 0.4rem 0; padding-left: 1.3rem; }
+  .toc a { text-decoration: none; color: var(--accent); }
+  .toc a:hover { text-decoration: underline; }
+  .note {
+    background: var(--note-bg);
+    border-left: 4px solid var(--accent);
+    padding: 0.8rem 1.1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1.2rem 0;
+  }
+  .planned {
+    background: var(--planned-bg);
+    border-left: 4px solid var(--planned-border);
+    padding: 0.8rem 1.1rem;
+    border-radius: 0 6px 6px 0;
+    margin: 1.2rem 0;
+  }
+  .planned strong { color: #8a5a00; }
+  .status-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 0.15em 0.55em;
+    border-radius: 999px;
+    margin-left: 0.5em;
+    vertical-align: middle;
+  }
+  .status-badge.available { background: #dff5e1; color: #1f7a34; }
+  .status-badge.planned { background: var(--planned-bg); color: #8a5a00; border: 1px solid var(--planned-border); }
+  a { color: var(--accent); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+  footer { color: var(--muted); font-size: 0.85rem; margin-top: 3rem; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>kcq User Manual</h1>
+<p class="subtitle">A layout-driven KLayout Salt package for circuit quantum electrodynamics (cQED) design.</p>
+
+<p>
+  This manual is for people <strong>using</strong> kcq to design cQED chips: installing the
+  package, placing components, routing, and (as later phases land) extracting netlists and piping
+  layouts to simulation. If you're looking to work on kcq's own source instead &mdash;
+  architecture, coding standards, running the test suite &mdash; see
+  <a href="../README.md">README.md</a> at the repository root.
+</p>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#installation">Installation</a></li>
+    <li><a href="#getting-started">Getting started: your first design</a></li>
+    <li><a href="#layers">Layers and the default technology</a></li>
+    <li><a href="#routing">Routing and waveguides</a></li>
+    <li><a href="#components">The component library</a></li>
+    <li><a href="#fixed-cells">Fixed cells (launchers and other static parts)</a></li>
+    <li><a href="#customizing">Customizing the technology</a></li>
+    <li><a href="#metadata">Simulation &amp; experimental metadata</a></li>
+    <li><a href="#netlist">Netlist extraction and export (LVS)</a> <span class="status-badge planned">planned</span></li>
+    <li><a href="#verification">Verification and design for test (DFT)</a> <span class="status-badge planned">planned</span></li>
+    <li><a href="#simulation">Multi-physics simulation (Elmer FEM)</a> <span class="status-badge planned">planned</span></li>
+    <li><a href="#troubleshooting">Troubleshooting</a></li>
+    <li><a href="#further-reading">Further reading</a></li>
+  </ol>
+</div>
+
+<h2 id="introduction">1. Introduction</h2>
+<p>
+  kcq replaces hardcoded, legacy layout approaches to circuit QED chip design with a
+  <strong>layout-driven</strong> philosophy, in the spirit of SiEPIC-Tools: routing, component
+  geometry, and (eventually) verification and simulation logic all live in a Python package, while
+  every trace width, gap width, clearance, and bend radius is pulled from the active technology's
+  XML files at runtime &mdash; never hardcoded in Python. Swapping technologies (a different fab
+  process, different CPW dimensions) never requires touching kcq's own code.
+</p>
+<p>
+  Concretely, kcq gives you:
+</p>
+<ul>
+  <li>An octilinear (Manhattan + 45&deg;) waypoint router with Euler-spiral and circular-arc bends,
+      and adiabatic sine S-bends, so routed CPWs minimize radiation loss.</li>
+  <li>Technology-driven CPW synthesis and boolean ground-plane generation.</li>
+  <li>A default PDK (<code>kcq</code>) with a two-island "DiCarlo-style" transmon, a star-coupler
+      transmon variant, Manhattan-style Josephson junctions and SQUIDs, and importable fixed cells
+      (e.g. RF launchers).</li>
+  <li>A shared pin/port convention that lets the router, components, and (in later phases) LVS all
+      agree on where things connect.</li>
+  <li>A metadata-pointer mechanism so simulation and experimental results can be attached to a
+      design and recovered later &mdash; even after a round trip through GDS.</li>
+</ul>
+<p>
+  kcq is under active development. Sections below are marked
+  <span class="status-badge available">available</span> for what works today, or
+  <span class="status-badge planned">planned</span> for designed-but-not-yet-built functionality
+  &mdash; described so this manual stays a complete reference, not just a changelog.
+</p>
+
+<h2 id="installation">2. Installation</h2>
+
+<h3>Prerequisites</h3>
+<ul>
+  <li><a href="https://www.klayout.de/">KLayout</a>, matching or newer than the
+      <code>api-version</code> declared in <code>grain.xml</code> (currently 0.28).</li>
+  <li>Nothing else, to just use the package. (Contributing to kcq itself needs a Python/<a
+      href="https://docs.astral.sh/uv/">uv</a> setup &mdash; see the developer README.)</li>
+</ul>
+
+<h3>Installing the Salt package</h3>
+<p>The recommended path is KLayout's own Package Manager:</p>
+<ol>
+  <li>In KLayout, open <strong>Tools &rarr; Manage Packages</strong>.</li>
+  <li>Choose <strong>Install New Package &rarr; Install from File</strong>.</li>
+  <li>Point it at the root of this repository (the folder containing <code>grain.xml</code>).</li>
+  <li>Restart KLayout so it picks up the new technology and macros.</li>
+</ol>
+<p>
+  If you'd rather manage it manually, copy (or symlink) the repository into your KLayout
+  installation's <code>salt</code> folder &mdash; consult KLayout's own documentation for the
+  exact path on your OS, since it varies (typically somewhere under your home directory or
+  <code>%APPDATA%</code> on Windows).
+</p>
+
+<div class="note">
+  <strong>Current limitation.</strong> kcq's PCells and fixed cells aren't auto-registered on
+  KLayout startup yet &mdash; that's a Phase 7 item (a <code>$autorun</code> macro calling
+  <code>kcq.utils.pcell_loader.register_library</code>). Until then, run that call yourself once
+  per session, from KLayout's macro editor/console or a script (shown next).
+</div>
+
+<h2 id="getting-started">3. Getting started: your first design</h2>
+<p>
+  This walks through placing a qubit, placing an edge launcher, and routing a feedline between
+  them &mdash; entirely in Python, since that's what works reliably both inside KLayout's macro
+  console and headlessly. (A GUI-driven workflow, with toolbar buttons and dialogs for this, is
+  planned for Phase 7.)
+</p>
+<pre><code>import pya
+from kcq.utils import pcell_loader
+from kcq.geometry import pins, router, cpw
+
+# Registers every PCell and fixed cell from tech/kcq/ into a pya.Library
+# named "kcq". Call this once per session.
+pcell_loader.register_library("kcq")
+
+layout = pya.Layout()
+layout.dbu = 0.001
+top = layout.create_cell("TOP")
+
+# Place a qubit. Parameters left out use their documented defaults.
+qubit = layout.create_cell("Transmon", "kcq", {
+    "coupler_island": ["top"],
+    "coupler_side": ["right"],
+})
+qubit_inst = top.insert(pya.CellInstArray(qubit.cell_index(), pya.Trans(0, 0)))
+
+# Place an edge launcher a few hundred microns away. Fixed (static) cells
+# use the two-argument create_cell -- no params dict, unlike a PCell.
+launcher = layout.create_cell("launcher_15p5_7", "kcq")
+launcher_inst = top.insert(pya.CellInstArray(
+    launcher.cell_index(),
+    pya.Trans(pya.Trans.R180, int(3000.0 / layout.dbu), int(120.0 / layout.dbu))))
+
+# Read each instance's port back out, in TOP's coordinate system.
+qubit_pin = pins.get_pins(qubit_inst.cell, layout)[0]
+launcher_pin_local = pins.get_pins(launcher_inst.cell, layout)[0]
+launcher_pin = pins.PinInfo(
+    name=launcher_pin_local.name,
+    position=launcher_inst.dcplx_trans * launcher_pin_local.position,
+    angle_deg=(launcher_pin_local.angle_deg + launcher_inst.dcplx_trans.angle) % 360.0,
+    width=launcher_pin_local.width,
+)
+
+assert pins.check_alignment(qubit_pin, launcher_pin), "ports don't face each other"
+
+# Route between them and synthesize the CPW.
+waypoints = router.route_octilinear(qubit_pin.position, qubit_pin.angle_deg,
+                                     launcher_pin.position, launcher_pin.angle_deg,
+                                     bend_radius=100.0)
+feedline = cpw.CPW("kcq", "resonator", waypoints)
+feedline.build(top, layout)
+
+layout.write("my_first_chip.gds")
+</code></pre>
+<p>
+  This script is verified against the actual API as part of kcq's own test suite (see
+  <code>tests/test_pdk_integration.py</code> and <code>tests/test_fixed_cells.py</code>), so it's
+  a safe starting point to copy and modify.
+</p>
+
+<h2 id="layers">4. Layers and the default technology</h2>
+<p>
+  kcq's default technology (<code>kcq</code>, at <code>tech/kcq/</code>) uses a
+  <strong>negative-lithography</strong> convention for its shared base metal: what you (or kcq's
+  own code) draws on the primary layer is the <em>gap</em> &mdash; the region etched away &mdash;
+  not the metal itself. A separate, paired layer carries an explicit positive trace/island core for
+  visualization and direct metal placement.
+</p>
+<p>
+  Every layer number in kcq means something structurally, not just by convention within one
+  technology file:
+</p>
+<ul>
+  <li><strong>Physical metal levels get a contiguous block of ten each.</strong> Level 1
+      (<code>L1</code>) is layers <code>0</code>-<code>9</code>, level 2 (<code>L2</code>) is
+      <code>10</code>-<code>19</code>, level 3 would be <code>20</code>-<code>29</code>, and so
+      on &mdash; a layer's number tells you which physical level it fabricates onto before you've
+      even looked up its name.</li>
+  <li><strong>Everything else &mdash; every non-physical "metalayer"</strong> (pins, text, device
+      recognition, ground exclusion, ...) &mdash; uses a layer number <strong>above
+      100</strong>, so a quick glance at the layer number alone tells you "fabricated metal" from
+      "bookkeeping/annotation" with no lookup needed.</li>
+  <li><strong>Layer <code>100</code> itself</strong> (multiple datatypes) is further reserved
+      specifically for <em>cell/chip/wafer-scale boundary definitions</em> &mdash; things that
+      describe the extent of something, not a signal path: device-recognition boxes, die/chip/wafer
+      outlines, the usable design area, alignment marks, and e-beam writefield boundaries all live
+      here, distinct from the routing/annotation metalayers above <code>100</code>.</li>
+</ul>
+<p>
+  A second, independent axis applies within a given layer: <strong>the datatype has a fixed
+  meaning of its own</strong>, the same way across every physical layer, so you don't have to
+  memorize what a given layer's non-zero datatypes mean case by case.
+</p>
+<table>
+  <tr><th>Datatype</th><th>Suffix</th><th>Meaning</th></tr>
+  <tr><td><code>0</code></td><td><code>.drawing</code></td><td>The default, intended physical mask geometry &mdash; actual metal (positive or negative), actual implants, etc.</td></tr>
+  <tr><td><code>4</code></td><td><code>.pin</code> / <code>.label</code></td><td>Zero-width paths or small text boxes marking terminal connectivity &mdash; the basis for LVS/netlist extraction</td></tr>
+  <tr><td><code>5</code></td><td><code>.blockage</code> / <code>.slot</code></td><td>Regions where automated routers or slotting tools are prohibited from placing features</td></tr>
+  <tr><td><code>10</code> / <code>20</code></td><td><code>.fill</code> / <code>.dummy</code></td><td>Density-fill or dummy patterning added late in the pipeline, for density-verification rules and/or flux traps before tape-out</td></tr>
+</table>
+<p>
+  This is why e-beam dose compensation has its own dedicated layer number (<code>5</code>, in the
+  boundary-free part of <code>L1</code>'s block) rather than living as an arbitrary non-zero
+  datatype on the junction layer (<code>2</code>) as an earlier draft of this table had it: a
+  non-zero datatype on <em>any</em> layer is meaningful under this convention, so anything that
+  isn't a pin, blockage, or fill needs a layer of its own instead of overloading a datatype number
+  that already means something else. kcq's own negative-lithography split
+  (<code>1/0</code>=gap, <code>1/1</code>=positive core) predates and is an explicit exception to
+  this convention &mdash; datatype <code>1</code> there means "secondary drawing representation,"
+  not anything from the table above.
+</p>
+
+<h3>Physical metal &mdash; L1 (layers 0&ndash;9)</h3>
+<p>
+  The only level with real, fabricated geometry today. Every row below is a real layer, not a
+  reserved placeholder &mdash; though several (marked below) aren't emitted by any PCell yet even
+  though the <code>.lyp</code> already defines them, ready for when a PCell needs them.
+</p>
+<table>
+  <tr><th>Layer/datatype</th><th>Name</th><th>Purpose</th></tr>
+  <tr><td><code>1/0</code></td><td>M1Gap</td><td>Base metal gap/keepout envelope (negative, primary) &mdash; shared by every <code>waveguides.xml</code> CPW type and by qubit PCells</td></tr>
+  <tr><td><code>1/1</code></td><td>M1</td><td>Base metal positive trace/island core</td></tr>
+  <tr><td><code>1/10</code></td><td>M1Fill</td><td>Base metal dummy fill (Aluminum Negative), per the <code>.fill</code> datatype convention above; not yet emitted by any PCell</td></tr>
+  <tr><td><code>2/0</code></td><td>JJ</td><td>Josephson junction fingers (EBL positive)</td></tr>
+  <tr><td><code>3/0</code></td><td>Patch (Laser)</td><td>Laser-lithography patch/bandage</td></tr>
+  <tr><td><code>4/0</code></td><td>JJPatch</td><td>E-beam patch/bandage (<code>Manhattan</code>/<code>ManhattanSQUID</code>'s <code>patch_layer</code>)</td></tr>
+  <tr><td><code>5/#</code></td><td>&mdash;</td><td>Reserved for e-beam dose compensation (Raith-style underdose), its own dedicated layer (see above); convention only, not yet emitted by any PCell</td></tr>
+  <tr><td><code>6/0</code></td><td>&mdash;</td><td>High-current metal (e.g. flux-bias lines needing thicker metal); not yet emitted by any PCell</td></tr>
+  <tr><td><code>7/0</code></td><td>&mdash;</td><td>Optional positive-only representation of the base metal, for visualization/direct placement; not yet emitted by any PCell</td></tr>
+  <tr><td><code>8/0</code></td><td>&mdash;</td><td>Airbridge landing; not yet emitted by any PCell</td></tr>
+  <tr><td><code>9/0</code></td><td>&mdash;</td><td>Airbridge span; not yet emitted by any PCell</td></tr>
+</table>
+<div class="note">
+  <code>L2</code> (layers <code>10</code>-<code>19</code>) is a flip-chip/multi-level routing
+  placeholder: <code>10/0</code> is registered today in <code>kcq.lyt</code>'s native KLayout
+  connectivity stack (so KLayout's own <strong>Trace Net</strong> tool already understands it, with
+  zero kcq code involved), but no PCell emits anything on it yet, and the via connecting it back
+  to <code>L1</code> has no real layer number assigned. <code>L3</code> and beyond
+  (<code>20</code>-<code>29</code>, <code>30</code>-<code>39</code>, ...) are fully reserved, with
+  nothing defined at all.
+</div>
+
+<h3>Metalayers &mdash; bookkeeping and annotation (always &gt; 100)</h3>
+<table>
+  <tr><th>Layer/datatype</th><th>Name</th><th>Purpose</th></tr>
+  <tr><td><code>100/2</code></td><td>DevRec</td><td>Device recognition boundary &mdash; a cell/chip-boundary type (see above), and the one entry in this block actually used by a PCell (<code>Transmon</code>/<code>TransmonStar</code>'s hidden <code>devrec_layer</code>)</td></tr>
+  <tr><td><code>102/1</code></td><td>Fill boundaries</td><td>Dummy-fill region marker</td></tr>
+  <tr><td><code>103/1</code></td><td>Texts</td><td>General annotation text</td></tr>
+  <tr><td><code>110/1</code></td><td>PinRec</td><td>Pin/port marker paths (see <a href="#routing">Routing</a>)</td></tr>
+  <tr><td><code>110/2</code></td><td>PinRecText</td><td>Pin name labels</td></tr>
+  <tr><td><code>110/3</code></td><td>MetaRef</td><td>Metadata pointer labels (see <a href="#metadata">Metadata</a>)</td></tr>
+  <tr><td><code>111/1</code></td><td>DRC Exception</td><td>DRC waiver marker</td></tr>
+  <tr><td><code>133/1</code></td><td>GroundExclude</td><td>Ground-plane exclusion margin</td></tr>
+</table>
+<p>
+  The rest of layer <code>100</code>'s cell/chip/wafer boundary datatypes (chip handling size,
+  single-die outline, wafer outline, design area, die-level alignment marks, e-beam writefield
+  boundary, ...), plus a couple of KLayout-GUI-only bookkeeping layers (black-box PCell size/name
+  annotations), are <code>.lyp</code>-only conventions with nothing wired into any PCell yet &mdash;
+  documented in <code>tech/kcq/lyp/kcq.lyp</code> directly; open it in KLayout's Layers panel
+  for the full, colored list.
+</p>
+<p>
+  Trace widths, gap widths, ground clearances, bend radii, and routing style all live in
+  <code>tech/kcq/waveguides.xml</code>, organized per named CPW "flavor" (<code>feedline</code>,
+  <code>resonator</code>, <code>flux_line</code> in the default technology) &mdash; see
+  <a href="#customizing">Customizing the technology</a> to add your own or adjust these.
+</p>
+
+<h2 id="routing">5. Routing and waveguides</h2>
+
+<h3>Pins and ports</h3>
+<p>
+  Every connectable point in kcq &mdash; a PCell's coupler, a fixed cell's launch point &mdash;
+  is marked with a <strong>pin</strong>: a short marker path on the <code>PinRec</code> layer
+  (110/1) whose midpoint is the connection point and whose direction is the port's
+  <em>outward-facing</em> orientation angle, plus a co-located name label on <code>PinRecText</code>
+  (110/2). Read pins back out of any cell with <code>kcq.geometry.pins.get_pins(cell, layout)</code>,
+  which returns a list of <code>PinInfo(name, position, angle_deg, width)</code>.
+</p>
+<p>
+  Two ports are correctly aligned for a direct connection when the second one's angle is the
+  first's <code>+ 180&deg;</code> (within tolerance) &mdash; check this with
+  <code>kcq.geometry.pins.check_alignment(pin_a, pin_b)</code> before routing, especially for
+  fixed cells you've imported yourself.
+</p>
+
+<h3>The router</h3>
+<p>
+  <code>kcq.geometry.router.route_octilinear(p1, angle1, p2, angle2, bend_radius=...)</code>
+  returns a waypoint list connecting two ports, solved purely from their positions and outward
+  angles &mdash; it picks the shortest of an L-shape (one corner), Z-shape (two corners), or
+  U-shape (three corners, for ports that need a backtrack) route, using headings in 45&deg;
+  increments. <code>route_manhattan(...)</code> is the same solver restricted to axis-aligned
+  (0/90/180/270&deg;) headings, for technologies or components that need strict Manhattan routing.
+</p>
+<div class="note">
+  There's no obstacle avoidance yet &mdash; the router solves purely from the two ports' own
+  geometry. Keep this in mind on denser layouts.
+</div>
+<p>
+  <code>kcq.geometry.curves.round_polyline(waypoints, radius, style="euler"|"arc")</code> turns
+  those sharp-cornered waypoints into a smoothed centerline, inscribing an Euler-spiral (minimizes
+  radiation loss) or circular-arc bend at each corner &mdash; <code>CPW.build</code> (below) calls
+  this for you, so you rarely need it directly. It raises a clear error if a bend doesn't fit in
+  the space available, or if a corner would need an unsupported 180&deg; hairpin turn.
+</p>
+
+<h3>CPW synthesis</h3>
+<p>
+  <code>kcq.geometry.cpw.CPW(tech_name, cpw_name, waypoints)</code> builds the actual trace and
+  gap-envelope <code>Region</code>s for a named CPW "flavor" from <code>waveguides.xml</code>, and
+  <code>.build(cell, layout)</code> inserts them. Trace dimensions are never passed in directly:
+  they always come from the technology, which is the whole point of "layout-driven" &mdash; the
+  same script produces correctly-scaled output against any technology that defines a matching
+  <code>cpw_name</code>.
+</p>
+
+<h2 id="components">6. The component library</h2>
+<p>
+  All PCells below live in <code>tech/kcq/pcells/</code> and are registered into the
+  <code>"kcq"</code> library by <code>pcell_loader.register_library</code>. Place one with
+  <code>layout.create_cell(name, "kcq", params)</code>; any parameter you omit uses its default.
+</p>
+
+<h3>Transmon <span class="status-badge available">available</span></h3>
+<p>
+  A DiCarlo-style two-island transmon: two rectangular islands stacked vertically (the
+  junction/SQUID sits in the gap between them), with couplers as horizontal CPWs whose center
+  conductor extends into a notch cut in an island's side edge, capacitively gapped from the
+  remaining island metal at the notch's back wall.
+</p>
+<table>
+  <tr><th>Parameter group</th><th>Key parameters</th></tr>
+  <tr><td>Islands</td><td><code>island_width</code>, <code>island_height</code>, <code>island_gap</code>, <code>corner_radius</code></td></tr>
+  <tr><td>Junction leads</td><td><code>add_junction_leads</code>, <code>junction_pos_x</code>, <code>junction_y_offset</code>, <code>arm_width</code>, <code>arm_gap</code>, <code>arm_radius</code>, <code>lead_angled</code>, <code>junction_angle</code>, <code>squid_spacing</code></td></tr>
+  <tr><td>Couplers (parallel lists, one entry per coupler)</td><td><code>coupler_island</code> ("top"/"bottom"), <code>coupler_side</code> ("left"/"right"), <code>coupler_y_offset</code>, <code>coupler_wg_width</code>, <code>coupler_wg_gap</code> (default to the technology's <code>resonator</code> CPW dimensions if left empty), <code>coupler_notch_depth</code>, <code>coupler_notch_gap</code>, <code>coupler_extension</code></td></tr>
+  <tr><td>Keepout</td><td><code>ground_clearance</code>, <code>keepout_corner_radius</code>, <code>margin</code></td></tr>
+</table>
+<p>
+  Each coupler gets a pin named <code>C0</code>, <code>C1</code>, ... at its outer end. A metadata
+  pointer (see <a href="#metadata">Metadata</a>) is attached automatically.
+</p>
+
+<h3>TransmonStar <span class="status-badge available">available</span></h3>
+<p>
+  A concentric transmon with a circular island and N configurable radial couplers (star pattern),
+  each independently controllable for angle, depth, gap, and angular width via parallel-list
+  parameters (<code>coupler_angles</code>, <code>coupler_depths</code>, <code>coupler_gaps</code>,
+  <code>coupler_widths</code>, ...). Useful where you want more couplers than the two-island
+  Transmon's four sides comfortably support. Pins are named <code>C0</code>, <code>C1</code>, ...
+  in <code>coupler_angles</code> order.
+</p>
+
+<h3>Manhattan <span class="status-badge available">available</span></h3>
+<p>
+  A parametric Manhattan-style (double-angle-evaporation) Josephson junction: two fingers meeting
+  at <code>angle</code>/<code>inner_angle</code>, with configurable widths
+  (<code>junction_width_t</code>/<code>junction_width_b</code>), connector pads, and optional
+  patch/bandage clearance cuts. Set <code>negative_resist</code> to match your lithography
+  polarity; set <code>draw_cap</code> to also draw a standalone test capacitor pad.
+</p>
+
+<h3>ManhattanSQUID <span class="status-badge available">available</span></h3>
+<p>
+  A SQUID loop built from two <code>Manhattan</code> sub-instances spaced by
+  <code>squid_spacing</code>, with independent <code>squid_asymmetry</code> scaling the second
+  junction's width, and a single shared test pad spanning both (rather than two overlapping ones).
+</p>
+
+<h2 id="fixed-cells">7. Fixed cells (launchers and other static parts)</h2>
+<p>
+  Static, pre-drawn geometry (RF wirebond launchers, alignment structures, ...) lives in
+  <code>tech/kcq/fixed_cells/</code> as GDS/GDS2/OASIS files, and is imported into the same
+  <code>"kcq"</code> library alongside the PCells. Unlike a PCell, a fixed cell takes no
+  parameters &mdash; create it with the <strong>two</strong>-argument form:
+</p>
+<pre><code>launcher = layout.create_cell("launcher_15p5_7", "kcq")</code></pre>
+<p>
+  Ports on an imported file have no <code>PinRec</code> markers by convention (they weren't drawn
+  by kcq), so each fixed cell needs a same-named <code>.json</code> sidecar documenting its pins,
+  applied automatically on import. For example,
+  <code>tech/kcq/fixed_cells/launcher_15p5_7.json</code>, next to
+  <code>launcher_15p5_7.oas</code> (an RF launcher tapering to a 15.5&micro;m core / 7&micro;m gap
+  CPW):
+</p>
+<pre><code>{
+  "description": "RF wirebond launcher, tapering to a 15.5um core / 7um gap CPW at the connection port.",
+  "pins": [
+    {"name": "P1", "x": 0.0, "y": 0.0, "angle_deg": 0.0, "width": 29.5}
+  ]
+}</code></pre>
+<p>
+  To add your own fixed cell: drop the GDS/GDS2/OASIS file and a matching <code>.json</code>
+  sidecar (same file stem) into <code>fixed_cells/</code>, then call
+  <code>pcell_loader.register_library("kcq")</code> again &mdash; it's idempotent, so this is
+  safe to call repeatedly. <code>width</code> in the sidecar follows the same convention as
+  everywhere else in kcq: the full envelope width (core + 2&times;gap), not just the trace core.
+</p>
+
+<h2 id="customizing">8. Customizing the technology</h2>
+<p>
+  Everything dimensional &mdash; trace widths, gaps, ground clearances, bend radii, routing style
+  &mdash; comes from <code>waveguides.xml</code>, not from Python. To add a new CPW "flavor" or
+  change the defaults, edit <code>tech/kcq/waveguides.xml</code>:
+</p>
+<pre><code>&lt;cpw name="feedline" layer="1/1" gap_layer="1/0"&gt;
+  &lt;trace_width value="10.0"/&gt;
+  &lt;gap_width value="6.0"/&gt;
+  &lt;ground_clearance value="20.0"/&gt;
+  &lt;bend_radius min="50.0" default="100.0" style="euler"/&gt;
+  &lt;taper length="150.0"/&gt;
+  &lt;routing style="octilinear"/&gt;
+&lt;/cpw&gt;</code></pre>
+<div class="note">
+  XML comments in this file (and any kcq XML file) can't contain a literal <code>--</code>
+  &mdash; that's illegal per the XML spec, not a kcq restriction, but it's easy to trip over when
+  hand-editing notes. Use a single dash or reword instead.
+</div>
+<p>
+  To develop against a different technology entirely (a second PDK, or a private fork of
+  <code>kcq</code>), point the <code>KCQ_TECH_PATH</code> environment variable at a directory
+  containing your own <code>&lt;name&gt;/waveguides.xml</code> and <code>&lt;name&gt;/pcells/</code>
+  &mdash; kcq's Python code resolves a technology by name in this order: a KLayout-registered
+  technology, then <code>KCQ_TECH_PATH</code>, then the repository's own <code>tech/</code>
+  folder. This is also how kcq's own headless test suite runs without a full KLayout install.
+</p>
+
+<h2 id="metadata">9. Simulation &amp; experimental metadata <span class="status-badge available">pointers available</span></h2>
+<p>
+  Later phases will extract Energy Participation Ratios (EPR) and S-parameters from FEM simulation
+  (or from real measurements) and need to attach that data to the design it describes &mdash;
+  without bloating the GDS, and without depending on features that don't survive a fabrication
+  round trip. <code>kcq.utils.metadata</code> provides the pointer mechanism today; the analysis
+  that would populate it (Phase 6) is still planned.
+</p>
+<p>
+  <code>attach_pointer(cell, layout, component_type, params)</code> (called automatically by
+  <code>Transmon</code>) writes a short <code>"kcq:&lt;id&gt;"</code> text label on the
+  <code>MetaRef</code> layer (110/3) &mdash; a stable hash of the component type and parameters, so
+  identical instances share one ID. This was deliberately built as a <em>text label</em>, not a
+  KLayout cell property: verified directly (not assumed) that cell/shape properties survive an
+  OASIS round trip but are lost on a plain GDS2 write/read, while text labels survive both. Read it
+  back with <code>read_pointer(cell, layout)</code>.
+</p>
+<p>
+  The actual simulation data is never embedded in the GDS: <code>write_metadata(metadata_id, data,
+  metadata_dir)</code> and <code>read_metadata(metadata_id, metadata_dir)</code> read/write a
+  sidecar JSON file per ID (participation ratios, extracted E<sub>J</sub>/E<sub>C</sub>/f&#8320;&#8321;/anharmonicity,
+  a reference to a Touchstone file for S-parameters, source, timestamp) in a directory you choose
+  &mdash; keeping the GDS small and the metadata human-readable and diffable as text.
+</p>
+
+<h2 id="netlist">10. Netlist extraction and export (LVS) <span class="status-badge planned">planned &mdash; Phase 4</span></h2>
+<div class="planned">
+  <strong>Not implemented yet.</strong> Described here so the manual stays a complete reference to
+  where kcq is headed.
+</div>
+<p>
+  The intended workflow: <code>kcq.lvs.extractor.extract_connectivity(top_cell, layout)</code>
+  will walk the cell hierarchy, collect every instance's pins (via
+  <code>kcq.geometry.pins.get_pins</code>, already available today), and union pins that coincide
+  into nets &mdash; producing a <code>NetlistGraph</code> whose edges are tagged
+  <code>galvanic</code> (connected by a routed CPW) or <code>capacitive</code> (close but
+  unconnected, e.g. a coupled qubit pad). <code>kcq.lvs.export.to_spice</code> and
+  <code>to_touchstone</code> will render that graph to standard formats (the latter only
+  meaningfully once Phase 6 attaches real S-parameter results), and
+  <code>kcq.lvs.compare.compare(layout_graph, intended_schematic)</code> will diff the extracted
+  netlist against an intended one, reporting missing/extra nets and component mismatches &mdash;
+  standard LVS-style verification, adapted for lumped-element cQED circuits.
+</p>
+
+<h2 id="verification">11. Verification and design for test (DFT) <span class="status-badge planned">planned &mdash; Phase 5</span></h2>
+<div class="planned">
+  <strong>Not implemented yet.</strong>
+</div>
+<p>
+  Planned automated checks: CPW impedance consistency (computed via conformal mapping from
+  <code>waveguides.xml</code> dimensions and a substrate permittivity, flagging segments that drift
+  from the target impedance); ground-plane galvanic continuity (flagging CPW/resonator crossings
+  with no airbridge bridging the resulting ground islands); launcher pitch against standard PCB
+  grids (1&nbsp;mm, 2.54&nbsp;mm, or whatever a technology declares); and automated placement/
+  verification of e-beam alignment marks. One piece of this &mdash; an AST-based lint enforcing
+  kcq's own "read/write via <code>cell.shapes(layer)</code>, never a <code>cell.&lt;method&gt;</code>
+  shortcut" coding convention &mdash; is already built (<code>kcq.verification.lint</code>), just
+  scoped to kcq's own source rather than user designs.
+</p>
+
+<h2 id="simulation">12. Multi-physics simulation (Elmer FEM) <span class="status-badge planned">planned &mdash; Phase 6</span></h2>
+<div class="planned">
+  <strong>Not implemented yet.</strong> <a href="https://gmsh.info/">Gmsh</a> and
+  <a href="https://www.elmerfem.org/">Elmer FEM</a> will be required as external tools &mdash; they
+  aren't installable via pip or the Salt package manager and kcq can't vendor them; you'll need
+  both on your <code>PATH</code>.
+</div>
+<p>
+  Planned pipeline: a new <code>materials.xml</code> (substrate permittivity, metal London
+  penetration depth) alongside <code>waveguides.xml</code>; <code>kcq.simulation.mesher</code>
+  extruding each 2D layer into a 3D solid and writing a Gmsh <code>.geo</code> script (rejecting
+  unmerged input &mdash; the "merge geometry before writing" coding standard already enforced
+  elsewhere exists specifically so this step doesn't produce meshing artifacts);
+  <code>kcq.simulation.elmer.SifWriter</code> generating an Elmer <code>.sif</code> solver file
+  (electrostatic capacitance-matrix extraction, or eigenmode full-wave); and
+  <code>kcq.simulation.epr</code> implementing the Nigg et al. (2008) Energy Participation Ratio
+  method to turn field-solution output into estimated qubit frequency, anharmonicity, and
+  cross-Kerr couplings &mdash; ready to attach via <code>kcq.utils.metadata.write_metadata</code>
+  (available today).
+</p>
+
+<h2 id="troubleshooting">13. Troubleshooting</h2>
+<table>
+  <tr><th>Symptom</th><th>Likely cause / fix</th></tr>
+  <tr>
+    <td><code>layout.create_cell(...)</code> returns <code>None</code></td>
+    <td>
+      Either <code>pcell_loader.register_library("kcq")</code> wasn't called this session, or
+      the wrong <code>create_cell</code> arity was used: PCells need
+      <code>(name, "kcq", params)</code>; fixed (static) cells need the two-argument
+      <code>(name, "kcq")</code> &mdash; the three-argument form returns <code>None</code> for a
+      static cell. Also confirm the library name matches exactly (<code>"kcq"</code>, not the
+      technology's display name).
+    </td>
+  </tr>
+  <tr>
+    <td><code>KcqConfigError: ... malformed XML ...</code></td>
+    <td>Check any XML comments you've added for a literal <code>--</code> &mdash; illegal per the
+        XML spec, and easy to introduce by accident when writing prose notes inline.</td>
+  </tr>
+  <tr>
+    <td><code>InvalidGeometryError: ... bend radius ... does not fit ...</code></td>
+    <td>The waypoints between two ports are too close together for the requested bend radius.
+        Space the components farther apart, reduce <code>bend_radius</code>, or pass an aligned
+        <code>coupler_y_offset</code>/position so the route is straight and needs no bend at
+        all.</td>
+  </tr>
+  <tr>
+    <td><code>InvalidGeometryError: ... hairpin turn ...</code></td>
+    <td>The two ports' geometry forces a literal 180&deg; reversal at some corner (e.g. two
+        colinear ports both needing to backtrack) &mdash; not expressible as an inscribed bend.
+        Reposition one of the ports, or route in two shorter hops via an intermediate point.</td>
+  </tr>
+  <tr>
+    <td><code>pins.check_alignment(...)</code> returns <code>False</code> unexpectedly</td>
+    <td>Remember port angles are in the <em>outward</em> convention: a correctly-mating pair
+        differs by 180&deg;, not 0&deg;. If one pin came from a placed instance, make sure you
+        added the instance's own rotation to the pin's local angle (see the
+        <a href="#getting-started">getting-started</a> example).</td>
+  </tr>
+</table>
+
+<h2 id="further-reading">14. Further reading</h2>
+<ul>
+  <li><a href="../README.md">README.md</a> &mdash; developer documentation: architecture, coding
+      standards, running the test suite.</li>
+  <li><a href="../kcq_Claude_Guide.md">kcq_Claude_Guide.md</a> &mdash; the original
+      architecture/philosophy brief this project was built from.</li>
+  <li><code>grain.xml</code> &mdash; the Salt package manifest, including maintainer contact.</li>
+</ul>
+
+<footer>
+  kcq &mdash; layout-driven circuit QED design for KLayout. Licensed under Apache-2.0.
+</footer>
+
+</div>
+</body>
+</html>
