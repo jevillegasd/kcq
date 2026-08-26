@@ -1,15 +1,6 @@
-"""Snap-to-pin for a selected component instance (hotkey 'S').
-
-Finds the closest pin, among every other top-level instance in the same
-parent cell, that is within range and oriented opposite the selected
-instance's own closest pin (kcq.geometry.pins.check_alignment), and
-returns the translation needed to bring the two into coincidence -- the
-same "opposite-angle pin pairs, closest wins" model as SiEPIC-Tools'
-snap_component() (github.com/SiEPIC/SiEPIC-Tools,
-klayout_dot_config/python/SiEPIC/scripts.py). Position-only (no
-rotation): the opposite-angle filter already guarantees the two
-components are correctly oriented relative to each other, so snapping
-only ever needs to correct placement drift.
+"""Snap-to-pin for a selected component instance (hotkey 'S'). See
+doc/readme.html, "Interactive layout tools" for the user-facing
+behavior.
 """
 
 import pya

@@ -455,11 +455,52 @@ layout.write("my_first_chip.gds")
   <code>cpw_name</code>.
 </p>
 
+<h3>Interactive layout tools</h3>
+<p>
+  Four hotkey macros (<code>pymacros/</code>) speed up manual layout, modeled on
+  <a href="https://github.com/SiEPIC/SiEPIC-Tools">SiEPIC-Tools</a>' own equivalents:
+</p>
+<table>
+  <tr><th>Hotkey</th><th>Tool</th><th>What it does</th></tr>
+  <tr><td><code>S</code></td><td>Snap Component</td>
+    <td>Moves the selected instance so its closest pin coincides with the nearest
+    opposite-oriented pin among sibling instances, within 500&micro;m. Translation only &mdash; the
+    opposite-angle match already guarantees correct relative orientation.</td></tr>
+  <tr><td><code>W</code></td><td>Path to Waveguide</td>
+    <td>Converts a selected, hand-drawn path into a <code>Waveguide</code> PCell. Each end is first
+    snapped onto the nearest pin in range (any orientation), pivoting about its own neighboring
+    point onto the heading the pin requires &mdash; the endpoint lands as close to the pin as that
+    fixed-pivot ray allows, not necessarily exactly on it.</td></tr>
+  <tr><td><code>L</code></td><td>Measure Waveguide Length</td>
+    <td>Reports a selected <code>Waveguide</code>'s own length (trace metal area / trace width,
+    read from the built geometry) and, if it connects to other <code>Waveguide</code> instances
+    through coincident, opposite-oriented pins, the whole connected chain's total length.</td></tr>
+  <tr><td><code>Alt+L</code></td><td>Extend Waveguide Length</td>
+    <td>Grows a selected <code>Waveguide</code>'s free end(s) to bring its connected chain to a
+    target total length. Only free (unconnected) ends can move; if both <code>P1</code> and
+    <code>P2</code> already connect to a neighbor, it raises an error rather than guessing at an
+    interior stretch.</td></tr>
+</table>
+
 <h2 id="components">6. The component library</h2>
 <p>
   All PCells below live in <code>tech/kcq/pcells/</code> and are registered into the
   <code>"kcq"</code> library by <code>pcell_loader.register_library</code>. Place one with
   <code>layout.create_cell(name, "kcq", params)</code>; any parameter you omit uses its default.
+</p>
+
+<h3>Waveguide and Pin (core PCells) <span class="status-badge available">available</span></h3>
+<p>
+  Shipped by the kcq package itself (<code>python/kcq/pcells/</code>), not any one PDK's
+  <code>tech/&lt;name&gt;/pcells/</code> &mdash; technology-agnostic, and merged into every
+  technology's PCell library the same way. <code>Waveguide(path, cpw_name="feedline",
+  tech_name="kcq")</code> builds a CPW segment along <code>path</code>'s points, sized from
+  <code>tech_name</code>'s <code>waveguides.xml</code> (see "CPW synthesis" above); its own drawn
+  width is ignored. <code>Pin(pin_shape, pin_name="P1", width=10.0, layer=(1,1))</code> places a
+  standalone, draggable pin marker &mdash; useful for marking a connection point on hand-built
+  geometry with no PCell of its own. <code>pin_shape</code> is a 2-point guiding path: its
+  midpoint is the pin's position, its direction the pin's outward-facing angle, so dragging either
+  endpoint moves/rotates the pin.
 </p>
 
 <h3>Transmon <span class="status-badge available">available</span></h3>

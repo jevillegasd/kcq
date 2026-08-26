@@ -1,15 +1,9 @@
-"""Extend Waveguide Length (hotkey 'Alt+L'): grows a selected
-Waveguide's free end(s) along its own last-segment heading until the
-whole connected chain (kcq.gui.waveguide_chain) reaches a target total
-length.
-
-Only the free-end ("guiding node") case is implemented: if the
-waveguide's own P1 and P2 pins both already connect to a neighbor,
-there is no endpoint left to move without breaking a connection, and
-this raises InvalidGeometryError rather than guessing at an interior
-stretch -- KLayout's scripting API only exposes which whole shape or
-instance is selected, not which point or edge of a guiding shape, so
-detecting "an edge was selected" isn't possible here.
+"""Extend Waveguide Length (hotkey 'Alt+L'). See doc/readme.html,
+"Interactive layout tools" for the user-facing behavior. Only the
+free-end case is implemented -- KLayout's scripting API exposes which
+whole shape/instance is selected, not which point or edge of a guiding
+shape, so detecting "an edge was selected" for an interior stretch
+isn't possible here.
 """
 
 import math

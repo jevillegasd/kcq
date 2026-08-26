@@ -1,15 +1,6 @@
-"""Waveguide PCell: a placeable CPW segment, built entirely from
-kcq.geometry.cpw.CPW so its trace/gap widths and bend behavior stay
-technology-driven rather than duplicated here.
-
-This is a *core* PCell -- technology-agnostic (its own tech_name param
-just picks which technology's waveguides.xml sizes it), shipped by the
-kcq package itself (python/kcq/pcells/) rather than any one PDK's
-tech/<name>/pcells/. It still needs to resolve as
-layout.create_cell("Waveguide", tech_name, params) like any PDK-specific
-PCell, so kcq.utils.pcell_loader's register_pcell_library() merges
-every core PCell under this directory into each technology's own PCell
-library.
+"""Waveguide PCell: a placeable CPW segment, built from
+kcq.geometry.cpw.CPW. See doc/readme.html, "The component library"
+for params and usage.
 """
 
 import math

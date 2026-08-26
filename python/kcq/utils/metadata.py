@@ -1,18 +1,6 @@
-"""Simulation/experimental metadata pointers for kcq components.
-
-Phase 6 (EPR extraction, S-parameters for scikit-rf) and future
-experimental data need to be recoverable from a placed cell later. The
-data itself never lives in the GDS: it's written to a sidecar JSON file
-(plus referenced Touchstone files for S-parameters), and the GDS only
-carries a pointer to it.
-
-The pointer is a pya.Text label on the MetaRef layer, not a KLayout cell
-property: Cell.set_property values round-trip through OASIS but are
-lost on a plain GDS2 write/read, while Text shapes survive GDS2
-unchanged (see tests/test_metadata.py). GDS2 is the actual
-fab-submission format, so the text label is the load-bearing mechanism;
-a cell property is set too, best-effort, for in-session/OASIS
-convenience.
+"""Simulation/experimental metadata pointers for kcq components. See
+doc/readme.html, "Simulation & experimental metadata" for the design
+and usage.
 """
 
 import hashlib

@@ -1,21 +1,6 @@
-"""Pin PCell: a placeable, parametric pin/port marker.
-
-Wraps kcq.geometry.pins.add_pin as an interactively draggable PCell --
-useful for defining connection points on hand-built geometry (e.g.
-authoring a fixed_cells/*.json-equivalent pin sidecar interactively)
-where no other PCell already provides one at that location.
-
-The guiding shape is a 2-point path, matching a pin marker's own
-on-layout representation: its midpoint is the pin's position and its direction is
-the pin's outward-facing angle, so dragging either endpoint in the GUI
-moves and/or rotates the pin exactly the way the resulting marker will
-look.
-
-Core, technology-agnostic (no waveguides.xml lookup at all) -- shipped
-by the kcq package itself (python/kcq/pcells/) rather than any one
-PDK's tech/<name>/pcells/, merged into every technology's PCell library
-by kcq.utils.pcell_loader.register_pcell_library the same way Waveguide
-is.
+"""Pin PCell: a placeable, parametric pin/port marker, wrapping
+kcq.geometry.pins.add_pin. See doc/readme.html, "The component
+library" for params and usage.
 """
 
 import math

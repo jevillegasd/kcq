@@ -29,20 +29,12 @@ _EXCLUDE_POSITION_TOLERANCE_UM = 1e-6
 
 def find_nearest_pin(layout: pya.Layout, parent_cell: pya.Cell, position: pya.DPoint,
                       max_distance: float, exclude_position: pya.DPoint = None):
-    """The closest pin to `position`, among every instance placed
-    directly in parent_cell, within max_distance -- unlike
-    kcq.gui.snap.find_snap_delta, this does not filter by orientation
-    (kcq.geometry.pins.check_alignment); a caller that cares about
-    orientation matching (or not) applies that separately.
-
-    exclude_position, if given, skips any pin sitting at that exact
-    position -- so a caller snapping both ends of a short path can stop
-    the second end from re-claiming the same physical pin the first end
-    already snapped to (which would otherwise collapse the path down to
-    a near-zero-length stub between two ends of the same pin).
-
-    Returns a kcq.geometry.pins.PinInfo, or None if nothing is within
-    range."""
+    """The closest pin to `position` among parent_cell's direct child
+    instances, within max_distance -- not orientation-filtered (unlike
+    kcq.gui.snap.find_snap_delta); a caller that cares applies
+    check_alignment separately. exclude_position, if given, skips any
+    pin at that exact position (lets a two-end snap avoid re-claiming
+    the first end's pin). Returns a PinInfo, or None."""
     best = None
     best_distance = None
     for inst in parent_cell.each_inst():

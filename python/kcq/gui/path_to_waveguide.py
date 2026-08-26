@@ -1,11 +1,7 @@
-"""Path to Waveguide (hotkey 'W'): converts a raw, hand-drawn pya.Path
-shape into a kcq.pcells.Waveguide PCell instance sized by a chosen
-waveguides.xml cpw flavor. The drawn path's own width is irrelevant and
-discarded -- Waveguide.produce_impl only reads path.each_point().
-
-Before building, both end nodes are snapped onto the nearest pin in
-parent_cell (if one is within range) via snap_path_endpoints -- see its
-docstring for the exact rule.
+"""Path to Waveguide (hotkey 'W'). See doc/readme.html, "Interactive
+layout tools" for the user-facing behavior. The drawn path's own width
+is irrelevant and discarded -- Waveguide.produce_impl only reads
+path.each_point().
 """
 
 import math
@@ -32,33 +28,12 @@ def _project_endpoint(anchor: pya.DPoint, required_heading_deg: float, target: p
 def snap_path_endpoints(layout: pya.Layout, parent_cell: pya.Cell, points,
                          max_distance: float = snap.MAX_SNAP_DISTANCE_UM):
     """Snaps points[0] and points[-1] onto the nearest pin (any
-    orientation, unlike kcq.gui.snap's own instance-to-instance snap)
-    within max_distance among parent_cell's placed instances, treated
-    independently per end.
-
-    The connecting segment's heading is set to face the pin correctly
-    (required_heading = pin.angle_deg + 180), pivoting about that end's
-    own neighboring point (points[1] / points[-2], which stays fixed):
-    if the pin's own angle already matched the path's existing heading
-    there, this leaves the segment close to unchanged (just sliding the
-    endpoint along that same heading to meet the pin); if it differs,
-    the segment is swung to face the pin instead. The endpoint lands as
-    close to the pin as that fixed-pivot, fixed-heading ray allows --
-    generally *not* exactly on the pin unless it happens to already lie
-    on that ray (a full re-route, which would hit it exactly by
-    inserting a bend, is deliberately not used here).
-
-    A no-op for either end with no pin within max_distance. The end
-    snaps are also mutually exclusive of each other's pin: whichever
-    pin the start end claims (if any) is excluded from the end's own
-    search, so a short path near a single pin can't have both ends snap
-    onto that same physical pin and collapse to a near-zero-length stub.
-
-    Requires at least 2 points (so each end has a distinct neighboring
-    point to pivot from) -- for a 2-point path, snapping both ends uses
-    the other end's already-snapped position as its pivot (points[1]
-    for the start is the same list slot as points[-2] for the end).
-    """
+    orientation) within max_distance, each pivoting about its own
+    neighboring point (points[1] / points[-2]) -- see doc/readme.html,
+    "Interactive layout tools" for the rule. A no-op for either end
+    with no pin in range; the two ends exclude each other's claimed pin
+    so a short path near one pin can't collapse to a near-zero-length
+    stub. Requires at least 2 points."""
     if len(points) < 2:
         raise KcqConfigError("snap_path_endpoints: path needs at least 2 points")
     new_points = list(points)
