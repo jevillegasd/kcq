@@ -72,7 +72,11 @@ class TestWaveguidePins:
         assert set(found) == {"P1", "P2"}
 
         resonator = xml_parser.get_cpw_params("kcq", "resonator")
-        expected_width = resonator["trace_width"] + 2.0 * resonator["gap_width"]
+        # PinInfo.width reflects the triangle marker's own span, which for
+        # a Waveguide endpoint is the core (trace) width alone, not the
+        # full trace+2*gap envelope -- that full width still gets drawn as
+        # the pin's rectangle marker, just not read back via get_pins.
+        expected_width = resonator["trace_width"]
 
         p1, p2 = found["P1"], found["P2"]
         assert p1.position.x == pytest.approx(0.0)

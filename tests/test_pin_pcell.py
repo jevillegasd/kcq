@@ -85,7 +85,11 @@ class TestPinGeometry:
     def test_negative_width_is_clamped_to_zero(self):
         layout = _new_layout()
         cell = layout.create_cell("Pin", "kcq", {"width": -5.0})
-        assert pins.get_pins(cell, layout)[0].width == pytest.approx(0.0)
+        # Not exactly 0.0: add_pin floors the marker's own geometric
+        # footprint at a few dbu so a ~zero-width pin still has a real,
+        # non-degenerate triangle to snap to (a true zero-area polygon
+        # has no vertices at all -- nothing for get_pins to read back).
+        assert pins.get_pins(cell, layout)[0].width == pytest.approx(0.0, abs=0.01)
 
     def test_coincident_endpoints_produce_no_pin(self):
         # PCell production errors are caught internally by KLayout (logged,

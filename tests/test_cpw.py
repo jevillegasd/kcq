@@ -82,7 +82,21 @@ class TestCPWBuildStraight:
         trace_area = pya.Region(cell.shapes(trace_li)).area() * layout.dbu ** 2
         gap_area = pya.Region(cell.shapes(gap_li)).area() * layout.dbu ** 2
         assert trace_area == pytest.approx(10.0 * 1000, rel=1e-3)
-        assert gap_area == pytest.approx((10.0 + 2 * 6.0) * 1000, rel=1e-3)
+        # Gap layer is negative lithography: only the two flanking strips,
+        # not the trace core's own footprint.
+        assert gap_area == pytest.approx(2 * 6.0 * 1000, rel=1e-3)
+
+    def test_gap_does_not_overlap_trace_core(self, tmp_path, monkeypatch):
+        _make_fixture_tech(tmp_path, monkeypatch, "no_overlap_tech", trace_width=10.0, gap_width=6.0)
+        layout, cell = _new_layout()
+        waypoints = [pya.DPoint(0, 0), pya.DPoint(1000, 0)]
+
+        c = cpw.CPW("no_overlap_tech", "feedline", waypoints)
+        c.build(cell, layout)
+
+        trace_region = pya.Region(cell.shapes(layout.layer(3, 0)))
+        gap_region = pya.Region(cell.shapes(layout.layer(3, 1)))
+        assert (trace_region & gap_region).is_empty()
 
     def test_requires_at_least_two_waypoints(self, tmp_path, monkeypatch):
         _make_fixture_tech(tmp_path, monkeypatch, "single_pt_tech", trace_width=10.0, gap_width=6.0)
@@ -114,7 +128,7 @@ class TestCPWBuildClearance:
 
         gap_area = pya.Region(cell.shapes(layout.layer(3, 1))).area() * layout.dbu ** 2
         clearance_area = pya.Region(cell.shapes(layout.layer(3, 2))).area() * layout.dbu ** 2
-        assert gap_area == pytest.approx((10.0 + 2 * 6.0) * 1000, rel=1e-3)
+        assert gap_area == pytest.approx(2 * 6.0 * 1000, rel=1e-3)
         assert clearance_area == pytest.approx((10.0 + 2 * (6.0 + 20.0)) * 1000, rel=1e-3)
 
     def test_merges_when_clearance_layer_shares_gap_layer(self, tmp_path, monkeypatch):

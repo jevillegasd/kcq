@@ -52,14 +52,11 @@ class CPW:
         )
 
     def build(self, cell: pya.Cell, layout: pya.Layout) -> None:
-        """Builds the trace metal Region, the gap keepout Region
-        (width=trace_width + 2*gap_width), and the ground-clearance
-        Region (width=trace_width + 2*(gap_width + ground_clearance),
-        the "Ground Exclusion Area" a later ground-plane fill pass must
-        avoid), and inserts all three via cell.shapes(layer_index).
-        Regions that land on the same layer index (e.g. a technology
-        that points clearance_layer at gap_layer) are merged together
-        first, so the layer's total area isn't double-counted."""
+        """Builds and inserts the trace, gap, and clearance Regions (see
+        doc/readme.html, "Layers and the default technology" for the
+        gap-minus-core convention). Regions sharing a layer index (e.g.
+        clearance_layer == gap_layer) are merged first so area isn't
+        double-counted."""
         centerline = self.smoothed_centerline()
 
         trace_width = self.params["trace_width"]
@@ -67,7 +64,8 @@ class CPW:
         ground_clearance = self.params["ground_clearance"]
 
         trace_region = self._path_region(centerline, trace_width, layout.dbu)
-        keepout_region = self._path_region(centerline, trace_width + 2.0 * gap_width, layout.dbu)
+        gap_envelope = self._path_region(centerline, trace_width + 2.0 * gap_width, layout.dbu)
+        keepout_region = gap_envelope - trace_region
         clearance_region = self._path_region(
             centerline, trace_width + 2.0 * (gap_width + ground_clearance), layout.dbu)
 

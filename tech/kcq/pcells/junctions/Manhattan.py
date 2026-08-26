@@ -106,7 +106,7 @@ class Manhattan(pya.PCellDeclarationHelper):
                 region_pos = pya.Region(cap_shape).merged()
                 region_neg = pya.Region(metal_neg).merged() - pya.Region(cap_shape).merged()
             else:
-                # If no capacitor is drawn, we still need to define the regions
+                # Regions must be defined even when no capacitor is drawn.
                 region_pos = pya.Region()
                 region_neg = pya.Region()
 

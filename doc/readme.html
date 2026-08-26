@@ -194,8 +194,11 @@
   If you'd rather manage it manually, copy (or symlink) the repository into your KLayout
   installation's <code>salt</code> folder &mdash; consult KLayout's own documentation for the
   exact path on your OS, since it varies (typically somewhere under your home directory or
-  <code>%APPDATA%</code> on Windows).
+  <code>%APPDATA%</code> or <code>%USER%</code> on Windows).
 </p>
+<pre><code>mklink /J "%USER%/Klayout/salt/kcq" "%USER%/Github/kcq"
+</code></pre>
+
 
 <div class="note">
   <strong>Current limitation.</strong> kcq's PCells and fixed cells aren't auto-registered on
@@ -270,7 +273,9 @@ layout.write("my_first_chip.gds")
   <strong>negative-lithography</strong> convention for its shared base metal: what you (or kcq's
   own code) draws on the primary layer is the <em>gap</em> &mdash; the region etched away &mdash;
   not the metal itself. A separate, paired layer carries an explicit positive trace/island core for
-  visualization and direct metal placement.
+  visualization and direct metal placement. For a CPW, the gap region has the trace core's own
+  footprint subtracted &mdash; it carries only the two etched-away flanking strips, since the core
+  is the conductor that has to remain, drawn separately on its own layer.
 </p>
 <p>
   Every layer number in kcq means something structurally, not just by convention within one
@@ -384,16 +389,23 @@ layout.write("my_first_chip.gds")
 <h3>Pins and ports</h3>
 <p>
   Every connectable point in kcq &mdash; a PCell's coupler, a fixed cell's launch point &mdash;
-  is marked with a <strong>pin</strong>: a short marker path on the physical layer it terminates
-  (midpoint = connection point, direction = the port's <em>outward-facing</em> orientation angle),
-  plus a co-located name label, both on that layer's own reserved <code>.pin</code> datatype
+  is marked with a <strong>pin</strong>: a rectangle spanning the pin's full width plus a small
+  triangle (apex at the connection point, pointing outward along the port's orientation angle),
+  plus a co-located name label, all on the physical layer's own reserved <code>.pin</code> datatype
   (<code>4</code>, per the datatype convention above) &mdash; a metal trace's pin lands on
-  <code>1/4</code>, a junction's would land on <code>2/4</code>, and so on. Place one with
-  <code>kcq.geometry.pins.add_pin(cell, layout, name, point, angle_deg, width, layer_num)</code>;
-  read them back with <code>kcq.geometry.pins.get_pins(cell, layout)</code>, which scans every
-  <code>.pin</code>-datatype layer in the cell and returns a list of
-  <code>PinInfo(name, position, angle_deg, width, layer_num)</code> (pass a specific
-  <code>layer_num</code> to restrict the read to one physical layer).
+  <code>1/4</code>, a junction's would land on <code>2/4</code>, and so on. The triangle's apex is
+  a real polygon vertex so KLayout's GUI snapping can land on it exactly; the rectangle is purely
+  visual (KLayout only snaps to polygon vertices, and a rectangle has no single corner to serve as
+  "the" connection point). Place one with
+  <code>kcq.geometry.pins.add_pin(cell, layout, name, point, angle_deg, width, layer_num,
+  core_width=None)</code> &mdash; <code>core_width</code> narrows just the triangle (e.g. a
+  waveguide's trace width alone, distinct from its rectangle's trace+2*gap width); it defaults to
+  <code>width</code> when there's no such split (a zero or near-zero width still gets a small,
+  non-degenerate marker &mdash; KLayout can't store a truly zero-area polygon). Read pins back with
+  <code>kcq.geometry.pins.get_pins(cell, layout)</code>, which scans every <code>.pin</code>-datatype
+  layer in the cell and returns a list of <code>PinInfo(name, position, angle_deg, width,
+  layer_num)</code> (pass a specific <code>layer_num</code> to restrict the read to one physical
+  layer).
 </p>
 <p>
   A pin's <code>layer_num</code> also determines its <strong>Level</strong> &mdash;

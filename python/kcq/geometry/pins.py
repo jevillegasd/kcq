@@ -1,20 +1,10 @@
 """Pin/port standard shared by PCells, the router, and (Phase 4) LVS.
 
-A pin is a short pya.Path (midpoint = connection point, direction =
-outward orientation angle, matching route_octilinear's port convention)
-plus a co-located pya.Text naming it, both on the *same* physical
-layer's reserved pin/label sublayer: datatype 4 of whichever layer
-number the pin's terminal actually belongs to (e.g. (1, 4) for a metal
-trace terminal, (2, 4) for a junction terminal). This is kcq's own
-documented datatype convention (see doc/readme.html's "Layers and the
-default technology" section) applied for real: 0=.drawing, 4=.pin/
-.label, 5=.blockage, 10/20=.fill, the same meaning on every physical
-layer, so a pin's layer number alone tells you which physical layer
-it terminates -- and, via level_of(), which Level (contiguous block of
-ten layer numbers: L1=0-9, L2=10-19, ...) it belongs to. Two pins on
-different layer numbers within the same Level (e.g. a junction pin on
-2/4 and a metal pin on 1/4) are electrically compatible; kcq's own
-kcq.lyt <connectivity> stack unions exactly these layers for L1.
+A pin is a rectangle + a small triangle (apex at the connection point,
+the GUI-snappable part) + a name label, all on (layer_num,
+PIN_DATATYPE). Full marker design and the layer/Level datatype
+convention behind PIN_DATATYPE: doc/readme.html, "Pins and ports" and
+"Layers and the default technology".
 """
 
 import math
@@ -26,7 +16,7 @@ from kcq.utils.errors import KcqConfigError
 
 PIN_DATATYPE = 4
 
-_PIN_HALF_LENGTH = 0.5
+_PIN_MARKER_LENGTH = 1.0
 
 
 @dataclass
@@ -45,35 +35,66 @@ def level_of(layer_num: int) -> int:
 
 
 def add_pin(cell: pya.Cell, layout: pya.Layout, name: str, point: pya.DPoint,
-            angle_deg: float, width: float, layer_num: int) -> None:
-    """Inserts a pin marker path (length 1, centered at point, oriented
-    along angle_deg) and a co-located name label, both on
-    (layer_num, PIN_DATATYPE), via cell.shapes(...)."""
+            angle_deg: float, width: float, layer_num: int,
+            core_width: float = None) -> None:
+    """Inserts a pin marker (rectangle + triangle + name label, see
+    module docstring) on (layer_num, PIN_DATATYPE). core_width narrows
+    just the triangle, defaulting to `width`. Both shapes are floored
+    at 4 database units wide to avoid a degenerate, zero-area polygon."""
+    if core_width is None:
+        core_width = width
     rad = math.radians(angle_deg)
-    dx, dy = math.cos(rad) * _PIN_HALF_LENGTH, math.sin(rad) * _PIN_HALF_LENGTH
-    path = pya.DPath([pya.DPoint(point.x - dx, point.y - dy),
-                       pya.DPoint(point.x + dx, point.y + dy)], width)
+    forward = (math.cos(rad), math.sin(rad))
+    perp = (-math.sin(rad), math.cos(rad))
     pin_li = layout.layer(layer_num, PIN_DATATYPE)
-    cell.shapes(pin_li).insert(path)
+
+    half_width = max(width, 4.0 * layout.dbu) / 2.0
+    rectangle = pya.DPolygon([
+        pya.DPoint(point.x - _PIN_MARKER_LENGTH * forward[0] + half_width * perp[0],
+                   point.y - _PIN_MARKER_LENGTH * forward[1] + half_width * perp[1]),
+        pya.DPoint(point.x + _PIN_MARKER_LENGTH * forward[0] + half_width * perp[0],
+                   point.y + _PIN_MARKER_LENGTH * forward[1] + half_width * perp[1]),
+        pya.DPoint(point.x + _PIN_MARKER_LENGTH * forward[0] - half_width * perp[0],
+                   point.y + _PIN_MARKER_LENGTH * forward[1] - half_width * perp[1]),
+        pya.DPoint(point.x - _PIN_MARKER_LENGTH * forward[0] - half_width * perp[0],
+                   point.y - _PIN_MARKER_LENGTH * forward[1] - half_width * perp[1]),
+    ])
+    cell.shapes(pin_li).insert(rectangle)
+
+    base_center = pya.DPoint(point.x - _PIN_MARKER_LENGTH * forward[0],
+                              point.y - _PIN_MARKER_LENGTH * forward[1])
+    half_core = max(core_width, 4.0 * layout.dbu) / 2.0
+    base_left = pya.DPoint(base_center.x + half_core * perp[0],
+                            base_center.y + half_core * perp[1])
+    base_right = pya.DPoint(base_center.x - half_core * perp[0],
+                             base_center.y - half_core * perp[1])
+    triangle = pya.DPolygon([point, base_left, base_right])
+    cell.shapes(pin_li).insert(triangle)
+
     cell.shapes(pin_li).insert(pya.DText(name, point.x, point.y))
+
+
+def _apex_of(points: list) -> tuple:
+    """Returns (apex, base_left, base_right) from a triangle's 3
+    vertices (order not preserved by KLayout on round-trip). The apex
+    is the vertex whose two edges are *closest* to equal length, not an
+    exact match -- dbu quantization can shift a real triangle's "equal"
+    legs by a few dbu."""
+    best = min(
+        range(3),
+        key=lambda i: abs(points[i].distance(points[(i + 1) % 3])
+                           - points[i].distance(points[(i + 2) % 3])),
+    )
+    others = [points[j] for j in range(3) if j != best]
+    return points[best], others[0], others[1]
 
 
 def get_pins(cell: pya.Cell, layout: pya.Layout, layer_num: int = None,
              tolerance: float = 1e-3) -> list:
-    """Reads pin marker/label shapes back out into PinInfo objects.
-
-    layer_num=None (the default) scans every layer already registered
-    in `layout` whose datatype is PIN_DATATYPE, across every physical
-    layer number, and aggregates pins from all of them -- callers that
-    don't care which physical layer a pin belongs to (kcq.gui.snap,
-    kcq.gui.instance_pins) can keep asking "every pin on this cell"
-    without knowing the layer set up front. Passing layer_num restricts
-    the read to that one physical layer's (layer_num, PIN_DATATYPE).
-
-    Each marker path is matched to the label at the same point (within
-    tolerance); raises KcqConfigError for an unnamed pin, since that
-    means add_pin's two-shape convention was broken by hand-edited
-    geometry."""
+    """Reads pin markers back into PinInfo objects. layer_num=None
+    (default) scans every PIN_DATATYPE layer in the cell; pass
+    layer_num to restrict to one physical layer. Raises KcqConfigError
+    for a marker triangle with no matching name label."""
     if layer_num is not None:
         candidate_layers = [(layer_num, layout.layer(layer_num, PIN_DATATYPE))]
     else:
@@ -92,28 +113,31 @@ def get_pins(cell: pya.Cell, layout: pya.Layout, layer_num: int = None,
                 texts.append((pya.DPoint(t.x, t.y), t.string))
 
         for shape in cell.shapes(li).each():
-            if not shape.is_path():
+            if not shape.is_polygon():
                 continue
-            points = list(shape.dpath.each_point())
-            if len(points) != 2:
+            points = list(shape.dpolygon.each_point_hull())
+            if len(points) != 3:
                 continue
-            p0, p1 = points
-            mid = pya.DPoint((p0.x + p1.x) / 2.0, (p0.y + p1.y) / 2.0)
-            angle_deg = math.degrees(math.atan2(p1.y - p0.y, p1.x - p0.x)) % 360.0
+            apex, base_left, base_right = _apex_of(points)
+            base_center = pya.DPoint((base_left.x + base_right.x) / 2.0,
+                                      (base_left.y + base_right.y) / 2.0)
+            angle_deg = math.degrees(math.atan2(apex.y - base_center.y,
+                                                 apex.x - base_center.x)) % 360.0
+            width = base_left.distance(base_right)
 
             name = None
             for text_pos, text_str in texts:
-                if mid.distance(text_pos) <= tolerance:
+                if apex.distance(text_pos) <= tolerance:
                     name = text_str
                     break
             if name is None:
                 raise KcqConfigError(
-                    f"get_pins: pin path at {mid} on cell '{cell.name}' (layer "
+                    f"get_pins: pin marker at {apex} on cell '{cell.name}' (layer "
                     f"{found_layer_num}/{PIN_DATATYPE}) has no matching name label "
                     f"within tolerance={tolerance}"
                 )
-            pins.append(PinInfo(name=name, position=mid, angle_deg=angle_deg,
-                                 width=shape.dpath.width, layer_num=found_layer_num))
+            pins.append(PinInfo(name=name, position=apex, angle_deg=angle_deg,
+                                 width=width, layer_num=found_layer_num))
 
     return pins
 

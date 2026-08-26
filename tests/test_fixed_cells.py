@@ -41,8 +41,8 @@ class TestFixedCellImport:
         assert cell is not None
 
     def test_fixed_cell_library_is_separate_from_pcell_library(self, library):
-        # The user's explicit direction: PCells and fixed cells live in
-        # two different pya.Library instances, not merged into one.
+        # PCells and fixed cells live in two different pya.Library
+        # instances, not merged into one.
         assert FIXED_CELL_LIBRARY != "kcq"
         layout = pya.Layout()
         layout.dbu = 0.001
@@ -66,11 +66,11 @@ class TestFixedCellImport:
         layout.technology_name = "kcq"
         cell = _place_launcher(layout)
         bbox = cell.bbox().to_dtype(layout.dbu)
-        # Body spans x=[-440, 0], y=[-240.25, 240.25]; allow slack for the
+        # Body spans x=[-440, 0], y=[-220, 220]; allow slack for the
         # pin marker path, which pokes 0.5um past the port edge at x=0.
         assert bbox.left == pytest.approx(-440.0, abs=0.01)
-        assert bbox.bottom == pytest.approx(-240.25, abs=0.01)
-        assert bbox.top == pytest.approx(240.25, abs=0.01)
+        assert bbox.bottom == pytest.approx(-220.0, abs=0.01)
+        assert bbox.top == pytest.approx(220.0, abs=0.01)
 
 
 class TestFixedCellPins:

@@ -61,11 +61,45 @@ class TestAddGetPins:
         pin_li = layout.layer(1, pins.PIN_DATATYPE)
         assert not cell.shapes(pin_li).is_empty()
 
-    def test_unmatched_path_raises(self):
+    def test_draws_both_a_rectangle_and_a_triangle(self):
         layout, cell = _new_layout()
-        # Insert a pin marker path with no matching name label.
+        pins.add_pin(cell, layout, "P1", pya.DPoint(0, 0), 0.0, 20.0, 1)
         pin_li = layout.layer(1, pins.PIN_DATATYPE)
-        cell.shapes(pin_li).insert(pya.DPath([pya.DPoint(-0.5, 0), pya.DPoint(0.5, 0)], 5.0))
+
+        polygon_point_counts = sorted(
+            len(list(shape.dpolygon.each_point_hull()))
+            for shape in cell.shapes(pin_li).each() if shape.is_polygon()
+        )
+        # One 3-point triangle (parsed by get_pins) and one 4-point
+        # rectangle (decorative -- get_pins skips anything that isn't
+        # exactly 3 points).
+        assert polygon_point_counts == [3, 4]
+        # get_pins only ever returns the triangle -- the rectangle isn't
+        # double-counted as a second pin.
+        assert len(pins.get_pins(cell, layout)) == 1
+
+    def test_core_width_narrows_only_the_triangle(self):
+        layout, cell = _new_layout()
+        pins.add_pin(cell, layout, "P1", pya.DPoint(0, 0), 0.0, 20.0, 1, core_width=6.0)
+
+        # get_pins reads the triangle, so PinInfo.width reflects
+        # core_width, not the (wider) rectangle's width.
+        assert pins.get_pins(cell, layout)[0].width == pytest.approx(6.0)
+
+        pin_li = layout.layer(1, pins.PIN_DATATYPE)
+        rectangle_width = next(
+            pya.Region(shape.dpolygon.to_itype(layout.dbu)).bbox().to_dtype(layout.dbu).height()
+            for shape in cell.shapes(pin_li).each()
+            if shape.is_polygon() and len(list(shape.dpolygon.each_point_hull())) == 4
+        )
+        assert rectangle_width == pytest.approx(20.0)
+
+    def test_unmatched_triangle_raises(self):
+        layout, cell = _new_layout()
+        # Insert a pin marker triangle with no matching name label.
+        pin_li = layout.layer(1, pins.PIN_DATATYPE)
+        cell.shapes(pin_li).insert(pya.DPolygon(
+            [pya.DPoint(0, 0), pya.DPoint(-1, 2.5), pya.DPoint(-1, -2.5)]))
         with pytest.raises(KcqConfigError):
             pins.get_pins(cell, layout)
 
