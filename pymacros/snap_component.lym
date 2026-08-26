@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<klayout-macro>
+ <description>Snap Component</description>
+ <version/>
+ <category>pymacros</category>
+ <prolog/>
+ <epilog/>
+ <doc/>
+ <autorun>false</autorun>
+ <autorun-early>false</autorun-early>
+ <shortcut>S</shortcut>
+ <show-in-menu>true</show-in-menu>
+ <group-name/>
+ <menu-path>kcq_menu&gt;end("kcq").end</menu-path>
+ <interpreter>python</interpreter>
+ <dsl-interpreter-name/>
+ <text># Hotkey 'S': snaps the selected component instance onto the nearest
+# opposite-oriented pin among its siblings in the same cell.
+#
+# Logic lives in kcq.gui.snap (headlessly tested); this macro is the
+# thin, untestable GUI trigger that reads the current selection and
+# applies the result -- same split as
+# tech/kcq/pymacros/register_libraries.py.
+
+import pya
+
+from kcq.gui import snap
+from kcq.utils.errors import KcqError
+from kcq.utils.log import get_logger
+
+_LOG = get_logger(__name__)
+
+_TITLE = "Snap Component"
+
+
+def _run():
+    view = pya.Application.instance().main_window().current_view()
+    if view is None:
+        pya.MessageBox.warning(_TITLE, "No layout view is open.", pya.MessageBox.Ok)
+        return
+
+    selection = view.object_selection
+    if len(selection) != 1 or not selection[0].is_cell_inst():
+        pya.MessageBox.warning(_TITLE, "Select exactly one component instance first.",
+                                pya.MessageBox.Ok)
+        return
+
+    obj = selection[0]
+    layout = view.active_cellview().layout()
+    # obj.cell() is the *child* cell an instance selection refers to, not
+    # its container (per ObjectInstPath.cell_index's docstring: "the cell
+    # whose instance is selected... to obtain the index of the container
+    # cell, use \source"). obj.source() is the container (parent) cell
+    # index we actually want here.
+    parent_cell = layout.cell(obj.source())
+    selected_inst = obj.inst()
+    siblings = [inst for inst in parent_cell.each_inst() if inst != selected_inst]
+
+    try:
+        delta = snap.find_snap_delta(layout, selected_inst, siblings)
+    except KcqError as exc:
+        _LOG.error("%s: %s", _TITLE, exc)
+        pya.MessageBox.critical(_TITLE, str(exc), pya.MessageBox.Ok)
+        return
+
+    if delta is None:
+        pya.MessageBox.info(_TITLE, "No matching pin found within range.", pya.MessageBox.Ok)
+        return
+
+    # Register this edit as one Undo/Redo step. commit() must run even if
+    # the edit raises, so it's in a finally -- matching pya.LayoutView.
+    # transaction's own docstring ("must be terminated with a commit
+    # method call, even if some error occurred").
+    view.transaction(_TITLE)
+    try:
+        selected_inst.transform(pya.DTrans(delta.x, delta.y))
+    finally:
+        view.commit()
+    pya.Application.instance().main_window().redraw()
+
+
+try:
+    _run()
+except Exception as exc:  # last-resort safety net -- never surface a raw traceback
+    _LOG.error("%s: unexpected failure: %s", _TITLE, exc)
+    pya.MessageBox.critical(_TITLE, f"Unexpected error: {exc}", pya.MessageBox.Ok)
+</text>
+</klayout-macro>

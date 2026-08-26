@@ -7,12 +7,12 @@ KLayout's library tree.
 Not qfoundry's approach (kqcircuits.util.library_helper.load_libraries) --
 this is headless-callable, so both the pytest suite and any future batch
 (klayout -b) generation can resolve layout.create_cell(pcell_name,
-lib_name, params) before a GUI ever starts. Confirmed directly (not
-assumed): create_cell requires an explicit lib_name in this project's
-klayout package -- it does not fall back to a layout's technology_name.
-Also confirmed directly: a *static* library cell (a fixed cell, not a
-PCell) is looked up via the two-argument create_cell(name, lib_name) --
-the three-argument PCell form (with a params dict) returns None for it.
+lib_name, params) before a GUI ever starts. create_cell requires an
+explicit lib_name in this project's klayout package -- it does not fall
+back to a layout's technology_name. A *static* library cell (a fixed
+cell, not a PCell) is looked up via the two-argument create_cell(name,
+lib_name) -- the three-argument PCell form (with a params dict) returns
+None for it.
 """
 
 import importlib.util
@@ -129,7 +129,8 @@ def _import_fixed_cells(library_layout: pya.Layout, fixed_cells_dir: str):
                 sidecar = json.load(f)
             for pin in sidecar.get("pins", []):
                 pins.add_pin(cell, library_layout, pin["name"],
-                              pya.DPoint(pin["x"], pin["y"]), pin["angle_deg"], pin["width"])
+                              pya.DPoint(pin["x"], pin["y"]), pin["angle_deg"], pin["width"],
+                              pin["layer"])
         else:
             _LOG.warning("pcell_loader: fixed cell %s has no pin sidecar (%s)", stem, sidecar_path)
 
@@ -157,7 +158,20 @@ def register_pcell_library(tech_name: str = "kcq") -> pya.Library:
             self.description = f"{tech_name} PCell library"
             for class_name, cls in discovered:
                 self.layout().register_pcell(class_name, cls())
+            # A PCell's own produce_impl sees self.layout as this
+            # library's internal layout, not the caller's -- so a PCell
+            # that composes another one from this same library (e.g.
+            # ManhattanSQUID's self.layout.create_cell("Manhattan", ...))
+            # needs *this* layout's technology_name set too, independent
+            # of whatever the calling layout's technology_name is.
+            self.layout().technology_name = tech_name
             self.register(tech_name)
+            # Without this, the library (and every PCell in it) shows up
+            # for *every* open layout regardless of its active technology
+            # -- a real problem once more than one PDK is installed
+            # alongside kcq, since their PCells/fixed cells would all
+            # appear together instead of being scoped to their own tech.
+            self.add_technology(tech_name)
 
     library = _KcqPCellLibrary()
     _registered_pcell_libraries[tech_name] = library
@@ -179,8 +193,13 @@ def register_fixed_cell_library(tech_name: str = "kcq") -> pya.Library:
     class _KcqFixedCellLibrary(pya.Library):
         def __init__(self):
             self.description = f"{tech_name} fixed-cell library"
+            self.layout().technology_name = tech_name
             self.imported_fixed_cells = list(_import_fixed_cells(self.layout(), fixed_cells_dir))
             self.register(lib_name)
+            # Associates with the technology (tech_name, e.g. "kcq"), not
+            # this library's own name (lib_name, e.g. "kcq_fixed_cells") --
+            # see register_pcell_library's identical call for why.
+            self.add_technology(tech_name)
 
     library = _KcqFixedCellLibrary()
     _registered_fixed_cell_libraries[tech_name] = library

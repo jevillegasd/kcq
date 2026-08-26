@@ -16,6 +16,7 @@ def _register_kcq_library():
 def _new_layout():
     layout = pya.Layout()
     layout.dbu = 0.001
+    layout.technology_name = "kcq"
     top = layout.create_cell("TOP")
     return layout, top
 
@@ -33,8 +34,7 @@ class TestManhattan:
 
     def test_angle_is_clamped_to_plus_minus_60(self):
         # cell.pcell_parameters() reflects the pre-coercion input, not
-        # coerce_parameters_impl's mutation (confirmed directly against
-        # this project's klayout package) -- cell.pcell_declaration()
+        # coerce_parameters_impl's mutation. cell.pcell_declaration()
         # returns the live registered instance, so exercise the coercion
         # logic directly on it, which is what actually governs produce_impl.
         layout, top = _new_layout()

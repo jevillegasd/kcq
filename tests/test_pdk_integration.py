@@ -29,12 +29,13 @@ def _global_pin(layout, inst, pin_name):
     global_position = trans * local.position
     global_angle = (local.angle_deg + trans.angle) % 360.0
     return pins.PinInfo(name=local.name, position=global_position,
-                         angle_deg=global_angle, width=local.width)
+                         angle_deg=global_angle, width=local.width, layer_num=local.layer_num)
 
 
 def test_route_between_two_transmons_produces_continuous_cpw():
     layout = pya.Layout()
     layout.dbu = 0.001
+    layout.technology_name = "kcq"
     top = layout.create_cell("TOP")
 
     transmon_a = layout.create_cell("Transmon", "kcq", {

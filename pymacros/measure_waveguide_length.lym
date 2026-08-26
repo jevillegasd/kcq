@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<klayout-macro>
+ <description>Measure Waveguide Length</description>
+ <version/>
+ <category>pymacros</category>
+ <prolog/>
+ <epilog/>
+ <doc/>
+ <autorun>false</autorun>
+ <autorun-early>false</autorun-early>
+ <shortcut>L</shortcut>
+ <show-in-menu>true</show-in-menu>
+ <group-name/>
+ <menu-path>kcq_menu&gt;end("kcq").end</menu-path>
+ <interpreter>python</interpreter>
+ <dsl-interpreter-name/>
+ <text># Hotkey 'L': reports the selected Waveguide instance's own length
+# and, if it connects to other Waveguide instances, the connected
+# chain's total ("extended") length too.
+#
+# Logic lives in kcq.gui.waveguide_length (headlessly tested); this
+# macro is the thin, untestable GUI trigger.
+#
+# No pya.LayoutView.transaction/commit here, deliberately -- this macro
+# never modifies the layout, so there's nothing to register as an
+# Undo/Redo step (unlike Snap/Path to Waveguide/Extend).
+
+import pya
+
+from kcq.gui import waveguide_length
+from kcq.utils.errors import KcqError
+from kcq.utils.log import get_logger
+
+_LOG = get_logger(__name__)
+
+_TITLE = "Measure Waveguide Length"
+
+
+def _run():
+    view = pya.Application.instance().main_window().current_view()
+    if view is None:
+        pya.MessageBox.warning(_TITLE, "No layout view is open.", pya.MessageBox.Ok)
+        return
+
+    selection = view.object_selection
+    if len(selection) != 1 or not selection[0].is_cell_inst():
+        pya.MessageBox.warning(_TITLE, "Select exactly one Waveguide instance first.",
+                                pya.MessageBox.Ok)
+        return
+
+    obj = selection[0]
+    layout = view.active_cellview().layout()
+    # obj.cell() is the *child* cell an instance selection refers to, not
+    # its container -- see snap_component.lym's header comment. obj.source()
+    # is the container (parent) cell index we actually want here.
+    parent_cell = layout.cell(obj.source())
+    inst = obj.inst()
+
+    try:
+        result = waveguide_length.measure(parent_cell, layout, inst)
+    except KcqError as exc:
+        _LOG.error("%s: %s", _TITLE, exc)
+        pya.MessageBox.critical(_TITLE, str(exc), pya.MessageBox.Ok)
+        return
+
+    lines = [f"Length: {result.own_length:.3f} um"]
+    if result.is_chained:
+        lines.append(f"Extended length (connected chain): {result.extended_length:.3f} um")
+    pya.MessageBox.info(_TITLE, "\n".join(lines), pya.MessageBox.Ok)
+
+
+try:
+    _run()
+except Exception as exc:  # last-resort safety net -- never surface a raw traceback
+    _LOG.error("%s: unexpected failure: %s", _TITLE, exc)
+    pya.MessageBox.critical(_TITLE, f"Unexpected error: {exc}", pya.MessageBox.Ok)
+</text>
+</klayout-macro>

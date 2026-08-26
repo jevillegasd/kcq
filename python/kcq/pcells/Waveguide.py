@@ -51,9 +51,10 @@ class Waveguide(pya.PCellDeclarationHelper):
 
         centerline = waveguide.smoothed_centerline()
         width = waveguide.params["trace_width"] + 2.0 * waveguide.params["gap_width"]
-        self._add_end_pin("P1", centerline[0], centerline[1], width)
-        self._add_end_pin("P2", centerline[-1], centerline[-2], width)
+        trace_layer, _ = cpw.parse_layer_spec(waveguide.params["layer"])
+        self._add_end_pin("P1", centerline[0], centerline[1], width, trace_layer)
+        self._add_end_pin("P2", centerline[-1], centerline[-2], width, trace_layer)
 
-    def _add_end_pin(self, name, end_point, next_point, width):
+    def _add_end_pin(self, name, end_point, next_point, width, layer_num):
         angle_deg = math.degrees(math.atan2(end_point.y - next_point.y, end_point.x - next_point.x))
-        pins.add_pin(self.cell, self.layout, name, end_point, angle_deg, width)
+        pins.add_pin(self.cell, self.layout, name, end_point, angle_deg, width, layer_num)

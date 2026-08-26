@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<klayout-macro>
+ <description>Path to Waveguide</description>
+ <version/>
+ <category>pymacros</category>
+ <prolog/>
+ <epilog/>
+ <doc/>
+ <autorun>false</autorun>
+ <autorun-early>false</autorun-early>
+ <shortcut>W</shortcut>
+ <show-in-menu>true</show-in-menu>
+ <group-name/>
+ <menu-path>kcq_menu&gt;end("kcq").end</menu-path>
+ <interpreter>python</interpreter>
+ <dsl-interpreter-name/>
+ <text># Hotkey 'W': converts every selected raw pya.Path shape into a
+# kcq.pcells.Waveguide PCell instance, after asking which
+# waveguides.xml cpw flavor to use for the whole selection.
+#
+# Logic lives in kcq.gui.path_to_waveguide (headlessly tested); this
+# macro is the thin, untestable GUI trigger.
+#
+# The waveguide-type picker is a real pya.QDialog subclass, not
+# pya.QInputDialog.getItem: KLayout's Python binding does not return an
+# (item, ok) tuple from QInputDialog.getItem the way PyQt/PySide do --
+# it returns just the selected string, so unpacking into two variables
+# raises "too many values to unpack". KQCircuits' own macros avoid the
+# QInputDialog convenience statics for this reason, using a small
+# custom pya.QDialog instead -- the pattern mirrored here.
+
+import pya
+
+from kcq.gui import path_to_waveguide
+from kcq.utils import xml_parser
+from kcq.utils.errors import KcqError
+from kcq.utils.log import get_logger
+
+_LOG = get_logger(__name__)
+
+_TITLE = "Path to Waveguide"
+
+
+class _CpwPicker(pya.QDialog):
+    """Small OK/Cancel dialog picking one waveguides.xml cpw name.
+    selected_cpw_name stays None unless OK is pressed."""
+
+    def __init__(self, parent, cpw_names):
+        super().__init__(parent)
+        self.setWindowTitle(_TITLE)
+        self.selected_cpw_name = None
+
+        layout = pya.QVBoxLayout(self)
+        self.setLayout(layout)
+
+        label = pya.QLabel(self)
+        label.text = "Waveguide type:"
+        layout.addWidget(label)
+
+        self.combo = pya.QComboBox(self)
+        self.combo.addItems(cpw_names)
+        layout.addWidget(self.combo)
+
+        def on_ok():
+            self.selected_cpw_name = self.combo.currentText
+            self.accept()
+
+        ok_button = pya.QPushButton(self)
+        ok_button.text = "OK"
+        layout.addWidget(ok_button)
+        ok_button.clicked = on_ok
+
+        cancel_button = pya.QPushButton(self)
+        cancel_button.text = "Cancel"
+        layout.addWidget(cancel_button)
+        cancel_button.clicked = lambda: self.reject()
+
+
+def _run():
+    view = pya.Application.instance().main_window().current_view()
+    if view is None:
+        pya.MessageBox.warning(_TITLE, "No layout view is open.", pya.MessageBox.Ok)
+        return
+
+    targets = [obj for obj in view.object_selection
+               if not obj.is_cell_inst() and obj.shape.is_path()]
+    if not targets:
+        pya.MessageBox.warning(_TITLE, "Select one or more paths first.", pya.MessageBox.Ok)
+        return
+
+    cv = view.active_cellview()
+    tech_name = cv.technology or "kcq"
+    try:
+        cpw_names = sorted(xml_parser.load_technology(tech_name)["cpws"].keys())
+    except KcqError as exc:
+        _LOG.error("%s: %s", _TITLE, exc)
+        pya.MessageBox.critical(_TITLE, str(exc), pya.MessageBox.Ok)
+        return
+
+    mw = pya.Application.instance().main_window()
+    picker = _CpwPicker(mw, cpw_names)
+    picker.exec_()
+    if picker.selected_cpw_name is None:
+        return
+    cpw_name = picker.selected_cpw_name
+
+    layout = cv.layout()
+    converted = 0
+    # The whole batch is one Undo/Redo step. commit() must run even if an
+    # individual conversion raises, so it's in a finally -- matching
+    # pya.LayoutView.transaction's own docstring ("must be terminated
+    # with a commit method call, even if some error occurred").
+    view.transaction(_TITLE)
+    try:
+        for obj in targets:
+            parent_cell = obj.cell()
+            dpath = obj.shape.dpath
+            try:
+                path_to_waveguide.convert_path(parent_cell, layout, dpath, cpw_name, tech_name)
+            except KcqError as exc:
+                _LOG.error("%s: %s", _TITLE, exc)
+                pya.MessageBox.critical(_TITLE, str(exc), pya.MessageBox.Ok)
+                continue
+            obj.shape.delete()
+            converted += 1
+    finally:
+        view.commit()
+
+    view.clear_object_selection()
+    pya.Application.instance().main_window().redraw()
+    if converted:
+        pya.MessageBox.info(_TITLE, f"Converted {converted} path(s) to '{cpw_name}' waveguides.",
+                             pya.MessageBox.Ok)
+
+
+try:
+    _run()
+except Exception as exc:  # last-resort safety net -- never surface a raw traceback
+    _LOG.error("%s: unexpected failure: %s", _TITLE, exc)
+    pya.MessageBox.critical(_TITLE, f"Unexpected error: {exc}", pya.MessageBox.Ok)
+</text>
+</klayout-macro>

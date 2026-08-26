@@ -41,12 +41,15 @@ class TestLoadConnectivityAgainstRealKcqLyt:
         assert [s["name"] for s in stacks] == ["L1", "L2"]
 
     def test_l1_symbol_resolves_to_the_layers_pins_and_cpw_actually_use(self):
-        # L1 = '1/0+110/1' in kcq.lyt -- catches future drift between
-        # kcq.lyt's connectivity block and pins.PIN_REC_LAYER /
-        # waveguides.xml's gap_layer if either changes without the other.
+        # L1 unions every L1 physical layer's drawing and pin (datatype
+        # PIN_DATATYPE) sublayer in kcq.lyt -- catches future drift
+        # between kcq.lyt's connectivity block, pins.PIN_DATATYPE, and
+        # waveguides.xml's gap_layer if any of them changes without the
+        # others.
         stacks = {s["name"]: s for s in connectivity_loader.load_connectivity("kcq")}
         assert GAP_LAYER in stacks["L1"]["layers"]
-        assert pins.PIN_REC_LAYER in stacks["L1"]["layers"]
+        assert (1, pins.PIN_DATATYPE) in stacks["L1"]["layers"]
+        assert (2, pins.PIN_DATATYPE) in stacks["L1"]["layers"]
 
     def test_l2_connections_reference_l1_via_a_named_via_placeholder(self):
         stacks = {s["name"]: s for s in connectivity_loader.load_connectivity("kcq")}

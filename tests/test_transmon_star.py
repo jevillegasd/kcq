@@ -16,6 +16,7 @@ def _register_kcq_library():
 def _place_transmon_star(params=None):
     layout = pya.Layout()
     layout.dbu = 0.001
+    layout.technology_name = "kcq"
     top = layout.create_cell("TOP")
     cell = layout.create_cell("TransmonStar", "kcq", params or {})
     top.insert(pya.CellInstArray(cell.cell_index(), pya.Trans(0, 0)))

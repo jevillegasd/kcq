@@ -3,7 +3,7 @@ dict structure, the same way kcq.utils.xml_parser parses
 waveguides.xml -- the technology's own XML stays the single source of
 truth, never duplicated as a second, hand-maintained Python spec.
 
-Two independent, confirmed-by-inspection consumers of <connectivity>:
+Two independent consumers of <connectivity>:
 - KLayout's own Net Tracer (pya.NetTracer / GUI Tools > Trace Net) reads
   it automatically once a technology is registered and active in a
   running KLayout session -- no kcq code needed there at all.
@@ -13,11 +13,11 @@ Two independent, confirmed-by-inspection consumers of <connectivity>:
   4 drives LayoutToNetlist from, instead of hand-declaring a second,
   parallel connectivity spec that could silently drift from kcq.lyt.
 
-Confirmed directly (not assumed): pya.Technology's connectivity data
-(surfaced in a running session as a NetTracerTechnologyComponent) isn't
-introspectable from the standalone klayout PyPI package outside a real
-GUI session -- so this re-parses the .lyt's <connectivity> XML itself,
-keeping it headlessly testable like the rest of kcq.
+pya.Technology's connectivity data (surfaced in a running session as a
+NetTracerTechnologyComponent) isn't introspectable from the standalone
+klayout PyPI package outside a real GUI session, so this re-parses the
+.lyt's <connectivity> XML itself, keeping it headlessly testable like
+the rest of kcq.
 """
 
 import os

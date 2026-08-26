@@ -7,11 +7,11 @@ data itself never lives in the GDS: it's written to a sidecar JSON file
 carries a pointer to it.
 
 The pointer is a pya.Text label on the MetaRef layer, not a KLayout cell
-property: verified directly (see tests/test_metadata.py) that
-Cell.set_property values round-trip through OASIS but are lost on a
-plain GDS2 write/read, while Text shapes survive GDS2 unchanged. GDS2 is
-the actual fab-submission format, so the text label is the load-bearing
-mechanism; a cell property is set too, best-effort, for in-session/OASIS
+property: Cell.set_property values round-trip through OASIS but are
+lost on a plain GDS2 write/read, while Text shapes survive GDS2
+unchanged (see tests/test_metadata.py). GDS2 is the actual
+fab-submission format, so the text label is the load-bearing mechanism;
+a cell property is set too, best-effort, for in-session/OASIS
 convenience.
 """
 

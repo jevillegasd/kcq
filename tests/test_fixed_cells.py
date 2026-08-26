@@ -36,6 +36,7 @@ class TestFixedCellImport:
     def test_launcher_is_creatable_via_two_arg_create_cell(self, library):
         layout = pya.Layout()
         layout.dbu = 0.001
+        layout.technology_name = "kcq"
         cell = _place_launcher(layout)
         assert cell is not None
 
@@ -45,12 +46,14 @@ class TestFixedCellImport:
         assert FIXED_CELL_LIBRARY != "kcq"
         layout = pya.Layout()
         layout.dbu = 0.001
+        layout.technology_name = "kcq"
         assert layout.create_cell("launcher_15p5_7", "kcq") is None
         assert layout.create_cell("Transmon", FIXED_CELL_LIBRARY, {}) is None
 
     def test_launcher_geometry_is_present(self, library):
         layout = pya.Layout()
         layout.dbu = 0.001
+        layout.technology_name = "kcq"
         cell = _place_launcher(layout)
         gap_li = layout.layer(*GAP_LAYER)
         exclude_li = layout.layer(*GROUND_EXCLUDE_LAYER)
@@ -60,6 +63,7 @@ class TestFixedCellImport:
     def test_launcher_bbox_matches_source_asset(self, library):
         layout = pya.Layout()
         layout.dbu = 0.001
+        layout.technology_name = "kcq"
         cell = _place_launcher(layout)
         bbox = cell.bbox().to_dtype(layout.dbu)
         # Body spans x=[-440, 0], y=[-240.25, 240.25]; allow slack for the
@@ -73,6 +77,7 @@ class TestFixedCellPins:
     def test_pin_loaded_from_json_sidecar(self, library):
         layout = pya.Layout()
         layout.dbu = 0.001
+        layout.technology_name = "kcq"
         cell = _place_launcher(layout)
         found = pins.get_pins(cell, layout)
         assert len(found) == 1
@@ -86,6 +91,7 @@ class TestFixedCellPins:
     def test_pin_survives_instance_placement_and_transform(self, library):
         layout = pya.Layout()
         layout.dbu = 0.001
+        layout.technology_name = "kcq"
         top = layout.create_cell("TOP")
         cell = layout.create_cell("launcher_15p5_7", FIXED_CELL_LIBRARY)
         inst = top.insert(pya.CellInstArray(
@@ -105,30 +111,33 @@ class TestFixedCellAlignmentAndRouting:
     def test_check_alignment_true_when_facing_a_matching_port(self, library):
         layout = pya.Layout()
         layout.dbu = 0.001
+        layout.technology_name = "kcq"
         top = layout.create_cell("TOP")
         launcher = layout.create_cell("launcher_15p5_7", FIXED_CELL_LIBRARY)
         top.insert(pya.CellInstArray(launcher.cell_index(), pya.Trans(0, 0)))
         launcher_pin = pins.get_pins(launcher, layout)[0]  # faces +x (0 deg)
 
         target_pin = pins.PinInfo(name="target", position=pya.DPoint(2000.0, 0.0),
-                                   angle_deg=180.0, width=22.0)
+                                   angle_deg=180.0, width=22.0, layer_num=1)
         assert pins.check_alignment(launcher_pin, target_pin) is True
 
     def test_check_alignment_false_when_ports_do_not_face_each_other(self, library):
         layout = pya.Layout()
         layout.dbu = 0.001
+        layout.technology_name = "kcq"
         top = layout.create_cell("TOP")
         launcher = layout.create_cell("launcher_15p5_7", FIXED_CELL_LIBRARY)
         top.insert(pya.CellInstArray(launcher.cell_index(), pya.Trans(0, 0)))
         launcher_pin = pins.get_pins(launcher, layout)[0]
 
         target_pin = pins.PinInfo(name="target", position=pya.DPoint(2000.0, 0.0),
-                                   angle_deg=90.0, width=22.0)
+                                   angle_deg=90.0, width=22.0, layer_num=1)
         assert pins.check_alignment(launcher_pin, target_pin) is False
 
     def test_route_from_launcher_to_transmon_produces_continuous_trace(self, library):
         layout = pya.Layout()
         layout.dbu = 0.001
+        layout.technology_name = "kcq"
         top = layout.create_cell("TOP")
 
         launcher = layout.create_cell("launcher_15p5_7", FIXED_CELL_LIBRARY)
@@ -149,6 +158,7 @@ class TestFixedCellAlignmentAndRouting:
             position=transmon_inst.dcplx_trans * local_pin.position,
             angle_deg=(local_pin.angle_deg + transmon_inst.dcplx_trans.angle) % 360.0,
             width=local_pin.width,
+            layer_num=local_pin.layer_num,
         )
 
         assert pins.check_alignment(launcher_pin, transmon_pin) is True

@@ -111,6 +111,11 @@ def _parse_waveguides_xml(file_path: str) -> dict:
         layer = cpw_node.attrib.get("layer")
         if not layer:
             raise KcqConfigError(f"{file_path}: <cpw name='{name}'> missing 'layer' attribute")
+        clearance_layer = cpw_node.attrib.get("clearance_layer")
+        if not clearance_layer:
+            raise KcqConfigError(
+                f"{file_path}: <cpw name='{name}'> missing 'clearance_layer' attribute"
+            )
 
         bend_node = cpw_node.find("bend_radius")
         if bend_node is None or "min" not in bend_node.attrib or "default" not in bend_node.attrib:
@@ -138,6 +143,7 @@ def _parse_waveguides_xml(file_path: str) -> dict:
         cpws[name] = {
             "layer": layer,
             "gap_layer": cpw_node.attrib.get("gap_layer", layer),
+            "clearance_layer": clearance_layer,
             "trace_width": _parse_float_attr(cpw_node, "trace_width", "value", file_path),
             "gap_width": _parse_float_attr(cpw_node, "gap_width", "value", file_path),
             "ground_clearance": _parse_float_attr(cpw_node, "ground_clearance", "value", file_path),

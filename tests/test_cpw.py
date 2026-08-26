@@ -8,10 +8,10 @@ from kcq.utils.errors import KcqConfigError
 FIXTURE_WAVEGUIDES_XML = """<?xml version="1.0" encoding="utf-8"?>
 <waveguides version="1">
   <technology name="{tech_name}" units="um">
-    <cpw name="feedline" layer="{layer}" gap_layer="{gap_layer}">
+    <cpw name="feedline" layer="{layer}" gap_layer="{gap_layer}" clearance_layer="{clearance_layer}">
       <trace_width value="{trace_width}"/>
       <gap_width value="{gap_width}"/>
-      <ground_clearance value="20.0"/>
+      <ground_clearance value="{ground_clearance}"/>
       <bend_radius min="10.0" default="{bend_radius}" style="{bend_style}"/>
       <taper length="50.0"/>
       <routing style="octilinear"/>
@@ -29,13 +29,14 @@ def _clear_tech_cache():
 
 
 def _make_fixture_tech(tmp_path, monkeypatch, tech_name, trace_width, gap_width,
-                        layer="3/0", gap_layer="3/1", bend_radius=10.0, bend_style="arc"):
+                        layer="3/0", gap_layer="3/1", clearance_layer="3/2",
+                        ground_clearance=20.0, bend_radius=10.0, bend_style="arc"):
     tech_dir = tmp_path / tech_name
     tech_dir.mkdir(parents=True, exist_ok=True)
     (tech_dir / xml_parser.WAVEGUIDES_FILENAME).write_text(
         FIXTURE_WAVEGUIDES_XML.format(
-            tech_name=tech_name, layer=layer, gap_layer=gap_layer,
-            trace_width=trace_width, gap_width=gap_width,
+            tech_name=tech_name, layer=layer, gap_layer=gap_layer, clearance_layer=clearance_layer,
+            trace_width=trace_width, gap_width=gap_width, ground_clearance=ground_clearance,
             bend_radius=bend_radius, bend_style=bend_style,
         ),
         encoding="utf-8",
@@ -87,6 +88,50 @@ class TestCPWBuildStraight:
         _make_fixture_tech(tmp_path, monkeypatch, "single_pt_tech", trace_width=10.0, gap_width=6.0)
         with pytest.raises(KcqConfigError):
             cpw.CPW("single_pt_tech", "feedline", [pya.DPoint(0, 0)])
+
+
+class TestCPWBuildClearance:
+    def test_clearance_area_matches_xml_params(self, tmp_path, monkeypatch):
+        _make_fixture_tech(tmp_path, monkeypatch, "clearance_tech", trace_width=10.0, gap_width=6.0,
+                            ground_clearance=20.0)
+        layout, cell = _new_layout()
+        waypoints = [pya.DPoint(0, 0), pya.DPoint(1000, 0)]
+
+        c = cpw.CPW("clearance_tech", "feedline", waypoints)
+        c.build(cell, layout)
+
+        clearance_li = layout.layer(3, 2)
+        assert not cell.shapes(clearance_li).is_empty()
+        clearance_area = pya.Region(cell.shapes(clearance_li)).area() * layout.dbu ** 2
+        assert clearance_area == pytest.approx((10.0 + 2 * (6.0 + 20.0)) * 1000, rel=1e-3)
+
+    def test_gap_and_clearance_land_on_distinct_layers(self, tmp_path, monkeypatch):
+        _make_fixture_tech(tmp_path, monkeypatch, "distinct_layers_tech", trace_width=10.0, gap_width=6.0,
+                            ground_clearance=20.0)
+        layout, cell = _new_layout()
+        c = cpw.CPW("distinct_layers_tech", "feedline", [pya.DPoint(0, 0), pya.DPoint(1000, 0)])
+        c.build(cell, layout)
+
+        gap_area = pya.Region(cell.shapes(layout.layer(3, 1))).area() * layout.dbu ** 2
+        clearance_area = pya.Region(cell.shapes(layout.layer(3, 2))).area() * layout.dbu ** 2
+        assert gap_area == pytest.approx((10.0 + 2 * 6.0) * 1000, rel=1e-3)
+        assert clearance_area == pytest.approx((10.0 + 2 * (6.0 + 20.0)) * 1000, rel=1e-3)
+
+    def test_merges_when_clearance_layer_shares_gap_layer(self, tmp_path, monkeypatch):
+        # A technology that points clearance_layer at the same layer as
+        # gap_layer must not end up with double-counted (unmerged,
+        # overlapping) area on that shared layer.
+        _make_fixture_tech(tmp_path, monkeypatch, "shared_layer_tech", trace_width=10.0, gap_width=6.0,
+                            clearance_layer="3/1", ground_clearance=20.0)
+        layout, cell = _new_layout()
+        c = cpw.CPW("shared_layer_tech", "feedline", [pya.DPoint(0, 0), pya.DPoint(1000, 0)])
+        c.build(cell, layout)
+
+        shared_area = pya.Region(cell.shapes(layout.layer(3, 1))).area() * layout.dbu ** 2
+        # The clearance region is a superset of the gap region, so the
+        # merged shared layer should equal the clearance region's own
+        # area, not the sum of both (which would mean it wasn't merged).
+        assert shared_area == pytest.approx((10.0 + 2 * (6.0 + 20.0)) * 1000, rel=1e-3)
 
 
 class TestCPWNoHardcoding:

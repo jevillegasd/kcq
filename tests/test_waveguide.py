@@ -23,6 +23,7 @@ def _register_kcq_library():
 def _new_layout():
     layout = pya.Layout()
     layout.dbu = 0.001
+    layout.technology_name = "kcq"
     layout.create_cell("TOP")
     return layout
 

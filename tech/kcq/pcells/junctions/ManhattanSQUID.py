@@ -6,9 +6,9 @@ Migrated from PDK_Qfoundry
 unchanged; adaptations: layer renumbering (matching Manhattan.py), the
 new `negative_resist` parameter forwarded to both sub-instances instead
 of qfoundry's hardcoded NEGATIVE_LAYERS check, and an explicit `lib_name`
-on both create_cell calls -- confirmed directly that this project's
-klayout package requires it (create_cell(pcell_name=...) alone returns
-None; it does not fall back to the layout's technology_name).
+on both create_cell calls -- this project's klayout package requires it
+(create_cell(pcell_name=...) alone returns None; it does not fall back
+to the layout's technology_name).
 """
 
 import pya

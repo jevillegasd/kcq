@@ -8,7 +8,7 @@ from kcq.utils.errors import TechnologyNotFoundError, KcqConfigError
 VALID_WAVEGUIDES_XML = """<?xml version="1.0" encoding="utf-8"?>
 <waveguides version="1">
   <technology name="fixture_tech" units="um">
-    <cpw name="feedline" layer="M1/0">
+    <cpw name="feedline" layer="M1/0" clearance_layer="M2/0">
       <trace_width value="10.0"/>
       <gap_width value="6.0"/>
       <ground_clearance value="20.0"/>
@@ -51,6 +51,7 @@ def test_load_technology_parses_valid_fixture(tmp_path, monkeypatch):
     assert feedline["trace_width"] == 10.0
     assert feedline["gap_width"] == 6.0
     assert feedline["ground_clearance"] == 20.0
+    assert feedline["clearance_layer"] == "M2/0"
     assert feedline["bend_radius_min"] == 50.0
     assert feedline["bend_radius_default"] == 100.0
     assert feedline["bend_style"] == "euler"
@@ -92,7 +93,7 @@ def test_missing_bend_radius_raises_config_error(tmp_path, monkeypatch):
     xml_missing_bend = """<?xml version="1.0" encoding="utf-8"?>
 <waveguides version="1">
   <technology name="missing_bend_tech" units="um">
-    <cpw name="feedline" layer="M1/0">
+    <cpw name="feedline" layer="M1/0" clearance_layer="M2/0">
       <trace_width value="10.0"/>
       <gap_width value="6.0"/>
       <ground_clearance value="20.0"/>
@@ -105,6 +106,16 @@ def test_missing_bend_radius_raises_config_error(tmp_path, monkeypatch):
 
     with pytest.raises(KcqConfigError, match="bend_radius"):
         xml_parser.load_technology("missing_bend_tech")
+
+
+def test_missing_clearance_layer_raises_config_error(tmp_path, monkeypatch):
+    xml_missing_clearance = VALID_WAVEGUIDES_XML.replace(' clearance_layer="M2/0"', '')
+    _make_tech_dir(tmp_path, "missing_clearance_tech",
+                   xml_missing_clearance.replace("fixture_tech", "missing_clearance_tech"))
+    monkeypatch.setenv("KCQ_TECH_PATH", str(tmp_path))
+
+    with pytest.raises(KcqConfigError, match="clearance_layer"):
+        xml_parser.load_technology("missing_clearance_tech")
 
 
 def test_invalid_routing_style_raises_config_error(tmp_path, monkeypatch):

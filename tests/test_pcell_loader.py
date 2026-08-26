@@ -49,9 +49,10 @@ def _make_tech_with_pcells(tmp_path, monkeypatch, tech_name, files: dict):
     return pcells_dir
 
 
-def _new_layout():
+def _new_layout(tech_name):
     layout = pya.Layout()
     layout.dbu = 0.001
+    layout.technology_name = tech_name
     layout.create_cell("TOP")
     return layout
 
@@ -63,7 +64,7 @@ class TestRegisterLibrary:
         })
         pcell_loader.register_library("loader_tech1")
 
-        layout = _new_layout()
+        layout = _new_layout("loader_tech1")
         cell = layout.create_cell("Foo", "loader_tech1", {"w": 5.0})
         assert cell is not None
 
@@ -74,7 +75,7 @@ class TestRegisterLibrary:
         })
         pcell_loader.register_library("loader_tech2")
 
-        layout = _new_layout()
+        layout = _new_layout("loader_tech2")
         assert layout.create_cell("Foo", "loader_tech2", {"w": 5.0}) is not None
         assert layout.create_cell("Bar", "loader_tech2", {"w": 5.0}) is not None
 
@@ -93,7 +94,7 @@ class TestRegisterLibrary:
         })
         library = pcell_loader.register_library("loader_tech4")
         assert library is not None
-        layout = _new_layout()
+        layout = _new_layout("loader_tech4")
         assert layout.create_cell("NotAPCell", "loader_tech4", {}) is None
 
     def test_skips_file_with_mismatched_class_name(self, tmp_path, monkeypatch):
@@ -111,7 +112,7 @@ class TestRegisterLibrary:
         pcell_loader.register_library("loader_tech6")
         pcell_loader.register_library("loader_tech6")  # must not raise or duplicate-error
 
-        layout = _new_layout()
+        layout = _new_layout("loader_tech6")
         assert layout.create_cell("Foo", "loader_tech6", {"w": 5.0}) is not None
 
     def test_pcell_and_fixed_cell_libraries_are_separate(self, tmp_path, monkeypatch):
@@ -145,7 +146,7 @@ class Composite(pya.PCellDeclarationHelper):
         })
         pcell_loader.register_library("loader_tech7")
 
-        layout = _new_layout()
+        layout = _new_layout("loader_tech7")
         cell = layout.create_cell("Composite", "loader_tech7", {})
         assert cell is not None
         assert cell.called_cells() or list(cell.each_inst())
@@ -173,6 +174,6 @@ class TestPackageLevelCorePCells:
 
         pcell_loader.register_library("loader_tech9")
 
-        layout = _new_layout()
+        layout = _new_layout("loader_tech9")
         assert layout.create_cell("Foo", "loader_tech9", {"w": 5.0}) is not None
         assert layout.create_cell("CoreWidget", "loader_tech9", {"w": 5.0}) is not None

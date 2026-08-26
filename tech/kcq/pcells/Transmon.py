@@ -86,7 +86,7 @@ class Transmon(pya.PCellDeclarationHelper):
         self.param("devrec_layer", self.TypeLayer, "Device recognition layer",
                    default=pya.LayerInfo(100, 2), hidden=True)
         self.param("ground_exclude_layer", self.TypeLayer, "Ground exclusion layer",
-                   default=pya.LayerInfo(133, 1), hidden=True)
+                   default=pya.LayerInfo(1, 5), hidden=True)
 
         # Islands
         self.param("island_width", self.TypeDouble, "Island width [um]", default=420.0)
@@ -284,7 +284,8 @@ class Transmon(pya.PCellDeclarationHelper):
         angle_deg = 0.0 if spec["side"] == "right" else 180.0
         point = pya.DPoint(conductor_outer_x, spec["y_offset"])
         width = spec["wg_width"] + 2.0 * spec["wg_gap"]
-        pins.add_pin(self.cell, self.layout, f"C{index}", point, angle_deg, width)
+        pins.add_pin(self.cell, self.layout, f"C{index}", point, angle_deg, width,
+                     self.metal_layer.layer)
 
     def _keepout_rect(self, dbu):
         half_w = self.island_width / 2.0 + self.ground_clearance

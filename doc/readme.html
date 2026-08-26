@@ -326,15 +326,24 @@ layout.write("my_first_chip.gds")
   <tr><th>Layer/datatype</th><th>Name</th><th>Purpose</th></tr>
   <tr><td><code>1/0</code></td><td>M1Gap</td><td>Base metal gap/keepout envelope (negative, primary) &mdash; shared by every <code>waveguides.xml</code> CPW type and by qubit PCells</td></tr>
   <tr><td><code>1/1</code></td><td>M1</td><td>Base metal positive trace/island core</td></tr>
+  <tr><td><code>1/4</code></td><td>M1 Pin</td><td>Pin/terminal marker + name label for M1 connection points, per the <code>.pin</code> datatype convention above &mdash; <code>Waveguide</code>, <code>Pin</code>, <code>Transmon</code>/<code>TransmonStar</code>'s coupler ports all emit here</td></tr>
+  <tr><td><code>1/5</code></td><td>GroundExclude</td><td>Ground-plane exclusion margin, per the <code>.blockage</code> datatype convention above (kept off 133/1, KQCircuits' own "ground_grid_avoidance" in PDKs built on it)</td></tr>
   <tr><td><code>1/10</code></td><td>M1Fill</td><td>Base metal dummy fill (Aluminum Negative), per the <code>.fill</code> datatype convention above; not yet emitted by any PCell</td></tr>
   <tr><td><code>2/0</code></td><td>JJ</td><td>Josephson junction fingers (EBL positive)</td></tr>
+  <tr><td><code>2/4</code></td><td>Junction Pin</td><td>Pin/terminal marker for a junction's own connection point (e.g. to metal on <code>1/x</code>, same Level &mdash; see <code>pins.level_of()</code> below); reserved, not yet emitted by any PCell</td></tr>
   <tr><td><code>3/0</code></td><td>Patch (Laser)</td><td>Laser-lithography patch/bandage</td></tr>
+  <tr><td><code>3/4</code></td><td>Metal Patch (Laser) Pin</td><td>Reserved pin sublayer for <code>3/0</code>; not yet emitted by any PCell</td></tr>
   <tr><td><code>4/0</code></td><td>JJPatch</td><td>E-beam patch/bandage (<code>Manhattan</code>/<code>ManhattanSQUID</code>'s <code>patch_layer</code>)</td></tr>
+  <tr><td><code>4/4</code></td><td>Metal Patch (EBeam) Pin</td><td>Reserved pin sublayer for <code>4/0</code>; not yet emitted by any PCell</td></tr>
   <tr><td><code>5/#</code></td><td>&mdash;</td><td>Reserved for e-beam dose compensation (Raith-style underdose), its own dedicated layer (see above); convention only, not yet emitted by any PCell</td></tr>
   <tr><td><code>6/0</code></td><td>&mdash;</td><td>High-current metal (e.g. flux-bias lines needing thicker metal); not yet emitted by any PCell</td></tr>
+  <tr><td><code>6/4</code></td><td>EBeam HC Positive Pin</td><td>Reserved pin sublayer for <code>6/0</code>; not yet emitted by any PCell</td></tr>
   <tr><td><code>7/0</code></td><td>&mdash;</td><td>Optional positive-only representation of the base metal, for visualization/direct placement; not yet emitted by any PCell</td></tr>
+  <tr><td><code>7/4</code></td><td>Aluminum Positive Pin</td><td>Reserved pin sublayer for <code>7/0</code>; not yet emitted by any PCell</td></tr>
   <tr><td><code>8/0</code></td><td>&mdash;</td><td>Airbridge landing; not yet emitted by any PCell</td></tr>
+  <tr><td><code>8/4</code></td><td>Airbridge Landing Pin</td><td>Reserved pin sublayer for <code>8/0</code>; not yet emitted by any PCell</td></tr>
   <tr><td><code>9/0</code></td><td>&mdash;</td><td>Airbridge span; not yet emitted by any PCell</td></tr>
+  <tr><td><code>9/4</code></td><td>Airbridge Span Pin</td><td>Reserved pin sublayer for <code>9/0</code>; not yet emitted by any PCell</td></tr>
 </table>
 <div class="note">
   <code>L2</code> (layers <code>10</code>-<code>19</code>) is a flip-chip/multi-level routing
@@ -352,11 +361,8 @@ layout.write("my_first_chip.gds")
   <tr><td><code>100/2</code></td><td>DevRec</td><td>Device recognition boundary &mdash; a cell/chip-boundary type (see above), and the one entry in this block actually used by a PCell (<code>Transmon</code>/<code>TransmonStar</code>'s hidden <code>devrec_layer</code>)</td></tr>
   <tr><td><code>102/1</code></td><td>Fill boundaries</td><td>Dummy-fill region marker</td></tr>
   <tr><td><code>103/1</code></td><td>Texts</td><td>General annotation text</td></tr>
-  <tr><td><code>110/1</code></td><td>PinRec</td><td>Pin/port marker paths (see <a href="#routing">Routing</a>)</td></tr>
-  <tr><td><code>110/2</code></td><td>PinRecText</td><td>Pin name labels</td></tr>
   <tr><td><code>110/3</code></td><td>MetaRef</td><td>Metadata pointer labels (see <a href="#metadata">Metadata</a>)</td></tr>
   <tr><td><code>111/1</code></td><td>DRC Exception</td><td>DRC waiver marker</td></tr>
-  <tr><td><code>133/1</code></td><td>GroundExclude</td><td>Ground-plane exclusion margin</td></tr>
 </table>
 <p>
   The rest of layer <code>100</code>'s cell/chip/wafer boundary datatypes (chip handling size,
@@ -378,11 +384,26 @@ layout.write("my_first_chip.gds")
 <h3>Pins and ports</h3>
 <p>
   Every connectable point in kcq &mdash; a PCell's coupler, a fixed cell's launch point &mdash;
-  is marked with a <strong>pin</strong>: a short marker path on the <code>PinRec</code> layer
-  (110/1) whose midpoint is the connection point and whose direction is the port's
-  <em>outward-facing</em> orientation angle, plus a co-located name label on <code>PinRecText</code>
-  (110/2). Read pins back out of any cell with <code>kcq.geometry.pins.get_pins(cell, layout)</code>,
-  which returns a list of <code>PinInfo(name, position, angle_deg, width)</code>.
+  is marked with a <strong>pin</strong>: a short marker path on the physical layer it terminates
+  (midpoint = connection point, direction = the port's <em>outward-facing</em> orientation angle),
+  plus a co-located name label, both on that layer's own reserved <code>.pin</code> datatype
+  (<code>4</code>, per the datatype convention above) &mdash; a metal trace's pin lands on
+  <code>1/4</code>, a junction's would land on <code>2/4</code>, and so on. Place one with
+  <code>kcq.geometry.pins.add_pin(cell, layout, name, point, angle_deg, width, layer_num)</code>;
+  read them back with <code>kcq.geometry.pins.get_pins(cell, layout)</code>, which scans every
+  <code>.pin</code>-datatype layer in the cell and returns a list of
+  <code>PinInfo(name, position, angle_deg, width, layer_num)</code> (pass a specific
+  <code>layer_num</code> to restrict the read to one physical layer).
+</p>
+<p>
+  A pin's <code>layer_num</code> also determines its <strong>Level</strong> &mdash;
+  <code>kcq.geometry.pins.level_of(layer_num)</code> returns <code>layer_num // 10 + 1</code>,
+  matching the <code>L1</code>/<code>L2</code>/... blocks-of-ten scheme above. Two pins on
+  different physical layers within the same Level (e.g. a junction pin on <code>2/4</code> and a
+  metal pin on <code>1/4</code>, both Level 1) are electrically compatible; this is currently
+  descriptive data only &mdash; kcq's own <code>kcq.lyt</code> <code>&lt;connectivity&gt;</code>
+  stack unions these layers for KLayout's native Net Tracer tool, but no kcq layout tool enforces
+  Level compatibility yet.
 </p>
 <p>
   Two ports are correctly aligned for a direct connection when the second one's angle is the
@@ -483,9 +504,9 @@ layout.write("my_first_chip.gds")
 </p>
 <pre><code>launcher = layout.create_cell("launcher_15p5_7", "kcq")</code></pre>
 <p>
-  Ports on an imported file have no <code>PinRec</code> markers by convention (they weren't drawn
-  by kcq), so each fixed cell needs a same-named <code>.json</code> sidecar documenting its pins,
-  applied automatically on import. For example,
+  Ports on an imported file have no pin markers by convention (they weren't drawn by kcq), so each
+  fixed cell needs a same-named <code>.json</code> sidecar documenting its pins, applied
+  automatically on import. For example,
   <code>tech/kcq/fixed_cells/launcher_15p5_7.json</code>, next to
   <code>launcher_15p5_7.oas</code> (an RF launcher tapering to a 15.5&micro;m core / 7&micro;m gap
   CPW):
@@ -493,9 +514,15 @@ layout.write("my_first_chip.gds")
 <pre><code>{
   "description": "RF wirebond launcher, tapering to a 15.5um core / 7um gap CPW at the connection port.",
   "pins": [
-    {"name": "P1", "x": 0.0, "y": 0.0, "angle_deg": 0.0, "width": 29.5}
+    {"name": "P1", "x": 0.0, "y": 0.0, "angle_deg": 0.0, "width": 29.5, "layer": 1}
   ]
 }</code></pre>
+<p>
+  <code>layer</code> is the physical layer number the pin belongs to (see the datatype convention
+  above &mdash; the pin itself is written to that layer's <code>4</code> datatype), and is
+  required per pin: there's no default, so every sidecar has to say explicitly which physical
+  layer each port actually connects to.
+</p>
 <p>
   To add your own fixed cell: drop the GDS/GDS2/OASIS file and a matching <code>.json</code>
   sidecar (same file stem) into <code>fixed_cells/</code>, then call
@@ -510,7 +537,7 @@ layout.write("my_first_chip.gds")
   &mdash; comes from <code>waveguides.xml</code>, not from Python. To add a new CPW "flavor" or
   change the defaults, edit <code>tech/kcq/waveguides.xml</code>:
 </p>
-<pre><code>&lt;cpw name="feedline" layer="1/1" gap_layer="1/0"&gt;
+<pre><code>&lt;cpw name="feedline" layer="1/1" gap_layer="1/0" clearance_layer="1/5"&gt;
   &lt;trace_width value="10.0"/&gt;
   &lt;gap_width value="6.0"/&gt;
   &lt;ground_clearance value="20.0"/&gt;
@@ -544,9 +571,9 @@ layout.write("my_first_chip.gds")
   <code>attach_pointer(cell, layout, component_type, params)</code> (called automatically by
   <code>Transmon</code>) writes a short <code>"kcq:&lt;id&gt;"</code> text label on the
   <code>MetaRef</code> layer (110/3) &mdash; a stable hash of the component type and parameters, so
-  identical instances share one ID. This was deliberately built as a <em>text label</em>, not a
-  KLayout cell property: verified directly (not assumed) that cell/shape properties survive an
-  OASIS round trip but are lost on a plain GDS2 write/read, while text labels survive both. Read it
+  identical instances share one ID. This was built as a <em>text label</em>, not a
+  KLayout cell property: cell/shape properties survive an OASIS round trip but are lost on a
+  plain GDS2 write/read, while text labels survive both. Read it
   back with <code>read_pointer(cell, layout)</code>.
 </p>
 <p>

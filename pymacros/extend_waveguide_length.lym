@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<klayout-macro>
+ <description>Extend Waveguide Length</description>
+ <version/>
+ <category>pymacros</category>
+ <prolog/>
+ <epilog/>
+ <doc/>
+ <autorun>false</autorun>
+ <autorun-early>false</autorun-early>
+ <shortcut>Alt+L</shortcut>
+ <show-in-menu>true</show-in-menu>
+ <group-name/>
+ <menu-path>kcq_menu&gt;end("kcq").end</menu-path>
+ <interpreter>python</interpreter>
+ <dsl-interpreter-name/>
+ <text># Hotkey 'Alt+L': grows the selected Waveguide instance's free end(s)
+# until its connected chain reaches a user-given target total length.
+#
+# Only the free-end case is supported (see kcq.gui.waveguide_extend's
+# module docstring for why an "edge of a guiding path" can't be
+# detected via KLayout's scripting API); a waveguide pinned at both
+# ends raises a clear error instead of guessing.
+#
+# Logic lives in kcq.gui.waveguide_chain / kcq.gui.waveguide_extend
+# (headlessly tested); this macro is the thin, untestable GUI trigger.
+#
+# The target-length prompt is a real pya.QDialog subclass, not
+# pya.QInputDialog.getDouble -- see path_to_waveguide.lym's header
+# comment for why (KLayout's Python binding does not return a (value,
+# ok) tuple from these QInputDialog statics the way PyQt/PySide do).
+
+import pya
+
+from kcq.gui import waveguide_chain, waveguide_extend
+from kcq.utils.errors import KcqError
+from kcq.utils.log import get_logger
+
+_LOG = get_logger(__name__)
+
+_TITLE = "Extend Waveguide Length"
+
+
+class _LengthPrompt(pya.QDialog):
+    """Small OK/Cancel dialog for a target total length in um.
+    target_length stays None unless OK is pressed with a valid number."""
+
+    def __init__(self, parent, current_length):
+        super().__init__(parent)
+        self.setWindowTitle(_TITLE)
+        self.target_length = None
+
+        layout = pya.QVBoxLayout(self)
+        self.setLayout(layout)
+
+        label = pya.QLabel(self)
+        label.text = "Target total length (um):"
+        layout.addWidget(label)
+
+        self.value_edit = pya.QLineEdit(self)
+        self.value_edit.text = f"{current_length:.3f}"
+        layout.addWidget(self.value_edit)
+
+        def on_ok():
+            try:
+                self.target_length = float(self.value_edit.text)
+            except ValueError:
+                pya.MessageBox.warning(_TITLE, "Enter a numeric length.", pya.MessageBox.Ok)
+                return
+            self.accept()
+
+        ok_button = pya.QPushButton(self)
+        ok_button.text = "OK"
+        layout.addWidget(ok_button)
+        ok_button.clicked = on_ok
+
+        cancel_button = pya.QPushButton(self)
+        cancel_button.text = "Cancel"
+        layout.addWidget(cancel_button)
+        cancel_button.clicked = lambda: self.reject()
+
+
+def _run():
+    view = pya.Application.instance().main_window().current_view()
+    if view is None:
+        pya.MessageBox.warning(_TITLE, "No layout view is open.", pya.MessageBox.Ok)
+        return
+
+    selection = view.object_selection
+    if len(selection) != 1 or not selection[0].is_cell_inst():
+        pya.MessageBox.warning(_TITLE, "Select exactly one Waveguide instance first.",
+                                pya.MessageBox.Ok)
+        return
+
+    obj = selection[0]
+    layout = view.active_cellview().layout()
+    # obj.cell() is the *child* cell an instance selection refers to, not
+    # its container -- see snap_component.lym's header comment. obj.source()
+    # is the container (parent) cell index we actually want here.
+    parent_cell = layout.cell(obj.source())
+    inst = obj.inst()
+
+    try:
+        current = waveguide_chain.walk_chain(parent_cell, layout, inst)
+    except KcqError as exc:
+        _LOG.error("%s: %s", _TITLE, exc)
+        pya.MessageBox.critical(_TITLE, str(exc), pya.MessageBox.Ok)
+        return
+
+    mw = pya.Application.instance().main_window()
+    prompt = _LengthPrompt(mw, current.extended_length)
+    prompt.exec_()
+    if prompt.target_length is None:
+        return
+    target = prompt.target_length
+
+    # Register this edit as one Undo/Redo step. commit() must run even if
+    # the edit raises, so it's in a finally -- matching pya.LayoutView.
+    # transaction's own docstring ("must be terminated with a commit
+    # method call, even if some error occurred").
+    view.transaction(_TITLE)
+    try:
+        new_length = waveguide_extend.extend_instance(parent_cell, layout, inst, target)
+    except KcqError as exc:
+        _LOG.error("%s: %s", _TITLE, exc)
+        pya.MessageBox.critical(_TITLE, str(exc), pya.MessageBox.Ok)
+        return
+    finally:
+        view.commit()
+
+    pya.Application.instance().main_window().redraw()
+    pya.MessageBox.info(_TITLE, f"New length: {new_length:.3f} um (target total {target:.3f} um).",
+                         pya.MessageBox.Ok)
+
+
+try:
+    _run()
+except Exception as exc:  # last-resort safety net -- never surface a raw traceback
+    _LOG.error("%s: unexpected failure: %s", _TITLE, exc)
+    pya.MessageBox.critical(_TITLE, f"Unexpected error: {exc}", pya.MessageBox.Ok)
+</text>
+</klayout-macro>
