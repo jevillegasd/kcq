@@ -1,23 +1,10 @@
 """Parses a technology's <connectivity> stack (kcq.lyt) into a plain
-dict structure, the same way kcq.utils.xml_parser parses
-waveguides.xml -- the technology's own XML stays the single source of
-truth, never duplicated as a second, hand-maintained Python spec.
-
-Two independent consumers of <connectivity>:
-- KLayout's own Net Tracer (pya.NetTracer / GUI Tools > Trace Net) reads
-  it automatically once a technology is registered and active in a
-  running KLayout session -- no kcq code needed there at all.
-- pya.LayoutToNetlist (the netlist-extraction engine Phase 4's LVS
-  module will use) does NOT: its connectivity has to be built via
-  make_layer()/connect() Python calls. This module is the bridge Phase
-  4 drives LayoutToNetlist from, instead of hand-declaring a second,
-  parallel connectivity spec that could silently drift from kcq.lyt.
-
-pya.Technology's connectivity data (surfaced in a running session as a
-NetTracerTechnologyComponent) isn't introspectable from the standalone
-klayout PyPI package outside a real GUI session, so this re-parses the
-.lyt's <connectivity> XML itself, keeping it headlessly testable like
-the rest of kcq.
+dict structure -- the single source of truth KLayout's own Net Tracer
+already reads directly, and the bridge Phase 4's LVS module will drive
+pya.LayoutToNetlist from (which needs make_layer()/connect() calls, not
+XML, and can't introspect pya.Technology's own connectivity data
+outside a real GUI session). Re-parsing the XML here keeps this
+headlessly testable like the rest of kcq.
 """
 
 import os
@@ -72,17 +59,10 @@ def load_connectivity(tech_name: str) -> list:
     of stack dicts, one per <stack>, in document order:
     {'name': str, 'description': str, 'layers': [(layer, datatype), ...],
      'connections': [{'a': str, 'via': str | None, 'b': str}]}.
-
-    <symbols> entries are collected across the *whole* <connectivity>
-    block before resolving any stack's 'layers' -- kcq.lyt itself
-    declares both L1's and L2's symbols inside the L2 <stack> node, not
-    one symbols block per stack, so per-stack scoping would miss L1's.
-    A stack with no matching <symbols> entry gets an empty 'layers' list
-    (not an error -- kcq.lyt's own L1 stack node has none, they live
-    under L2's node instead, and 'layers' is populated after the fact).
-    Returns [] if the technology's .lyt has no <connectivity> element at
-    all (not every technology needs one).
-    """
+    <symbols> are collected across the whole <connectivity> block before
+    resolving any stack's 'layers' -- kcq.lyt declares L1's symbols
+    inside L2's <stack> node, so per-stack scoping would miss them.
+    Returns [] if the technology's .lyt has no <connectivity> element."""
     base_path = xml_parser.find_technology_base_path(tech_name)
     file_path = os.path.join(base_path, f"{tech_name}.lyt")
     if not os.path.isfile(file_path):
