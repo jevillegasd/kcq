@@ -11,16 +11,14 @@ task-oriented guide to *using* kcq to design a chip — installation, first layo
 component library, fixed cells, and how simulation/FEM interfacing will plug in — see the
 [user manual](doc/readme.html).
 
-## Status
-
-Phases 1–3 are complete:
+## Project Development:
 
 - **Phase 1 (foundation & scaffolding):** the Salt package manifest, the `kcq` technology's
-  `waveguides.xml`, the XML parser, logging/error handling.
+  `waveguides.xml`, the XML parser, logging/error handling. **Completed**
 - **Phase 2 (core geometry & routing engine):** an octilinear (Manhattan + diagonal) waypoint
   router with L/Z/U-route solving, Euler-spiral and circular-arc bend generation, adiabatic sine
   S-bends, technology-driven CPW (trace + gap) synthesis, boolean ground-plane generation, and an
-  AST-based lint enforcing the "shapes, not cell" convention across the package.
+  AST-based lint enforcing the "shapes, not cell" convention across the package. **Completed**
 - **Phase 3 (default PDK & component library):** the `kcq` technology's `.lyt`/`.lyp`, a
   pin/port standard (`kcq.geometry.pins`) shared by PCells and the router, headless PCell +
   fixed-cell registration (`kcq.utils.pcell_loader`) into two separate `pya.Library` instances
@@ -35,7 +33,7 @@ Phases 1–3 are complete:
   PCell library alongside that technology's own PCells. `kcq.lyt` also carries a
   native KLayout `<connectivity>` stack (`kcq.utils.connectivity_loader`), so GUI net tracing
   works with zero kcq code and Phase 4's LVS extraction will build its `LayoutToNetlist`
-  connectivity from this same source instead of a hand-duplicated spec.
+  connectivity from this same source instead of a hand-duplicated spec. **Completed**
 
 Later phases (LVS extraction, verification/DFT, Elmer FEM simulation, GUI) are not yet
 implemented — see [`doc/readme.html`](doc/readme.html) for what each of those will look like
