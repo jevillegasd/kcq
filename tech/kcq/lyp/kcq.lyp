@@ -504,11 +504,11 @@
    </group-members>
    <group-members>
     <expanded>false</expanded>
-    <frame-color>#00c0c0</frame-color>
-    <fill-color>#00c0c0</fill-color>
+    <frame-color>#0080ff</frame-color>
+    <fill-color>#0080ff</fill-color>
     <frame-brightness>0</frame-brightness>
     <fill-brightness>0</fill-brightness>
-    <dither-pattern>I1</dither-pattern>
+    <dither-pattern>I11</dither-pattern>
     <line-style/>
     <valid>true</valid>
     <visible>true</visible>
@@ -523,10 +523,10 @@
    <group-members>
     <expanded>false</expanded>
     <frame-color>#c000c0</frame-color>
-    <fill-color>#c000c0</fill-color>
+    <fill-color>#ff8000</fill-color>
     <frame-brightness>0</frame-brightness>
     <fill-brightness>0</fill-brightness>
-    <dither-pattern>I1</dither-pattern>
+    <dither-pattern>I0</dither-pattern>
     <line-style/>
     <valid>true</valid>
     <visible>true</visible>

@@ -36,9 +36,9 @@ class TestLoadConnectivityAgainstRealKcqLyt:
     of this loader is to stay in sync with whatever that file says, not a
     synthetic fixture."""
 
-    def test_parses_both_stacks_in_document_order(self):
+    def test_parses_all_stacks_in_document_order(self):
         stacks = connectivity_loader.load_connectivity("kcq")
-        assert [s["name"] for s in stacks] == ["L1", "L2"]
+        assert [s["name"] for s in stacks] == ["L1", "L1.5", "L2"]
 
     def test_l1_symbol_resolves_to_the_layers_pins_and_cpw_actually_use(self):
         # L1 unions every L1 physical layer's drawing and pin (datatype
@@ -50,6 +50,18 @@ class TestLoadConnectivityAgainstRealKcqLyt:
         assert GAP_LAYER in stacks["L1"]["layers"]
         assert (1, pins.PIN_DATATYPE) in stacks["L1"]["layers"]
         assert (2, pins.PIN_DATATYPE) in stacks["L1"]["layers"]
+        # Airbridge layers moved out of L1's own union into L1.5's, plus
+        # the AirbridgeLanding via -- see test_l1_5_is_airbridge_span_...
+        assert (8, 0) not in stacks["L1"]["layers"]
+        assert (9, 0) not in stacks["L1"]["layers"]
+
+    def test_l1_5_is_airbridge_span_connected_to_l1_via_airbridge_landing(self):
+        stacks = {s["name"]: s for s in connectivity_loader.load_connectivity("kcq")}
+        assert (9, 0) in stacks["L1.5"]["layers"]
+        assert (9, pins.PIN_DATATYPE) in stacks["L1.5"]["layers"]
+        connections = stacks["L1.5"]["connections"]
+        assert {"a": "L1", "via": "AirbridgeLanding", "b": "L1.5"} in connections
+        assert {"a": "L1.5", "via": None, "b": "L1.5"} in connections
 
     def test_l2_connections_reference_l1_via_a_named_via_placeholder(self):
         stacks = {s["name"]: s for s in connectivity_loader.load_connectivity("kcq")}

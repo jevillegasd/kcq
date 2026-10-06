@@ -694,6 +694,15 @@ layout.write("my_first_chip.gds")
 </p>
 
 <h2 id="troubleshooting">13. Troubleshooting</h2>
+<div class="planned">
+  <strong>Known issue, pending fix:</strong> a newly drawn path converted via Path to Waveguide
+  (hotkey <code>W</code>) does not correctly snap/align its endpoints onto a nearby pin in a real
+  KLayout session, even though <code>kcq.gui.path_to_waveguide.snap_path_endpoints</code> passes
+  its own headless unit tests. Worth checking against the pin marker redesign
+  (rectangle+triangle, apex = connection point) first, since that's the most recently changed
+  piece of this code path and the trigger macro itself has no test coverage
+  (<code>pymacros/path_to_waveguide.lym</code> can't be exercised outside a live GUI session).
+</div>
 <table>
   <tr><th>Symptom</th><th>Likely cause / fix</th></tr>
   <tr>
